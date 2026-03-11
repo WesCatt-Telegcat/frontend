@@ -1,4 +1,6 @@
 export function InputBox() {
 
-    return 2
+    return <div>
+        Input Box
+    </div>
 }

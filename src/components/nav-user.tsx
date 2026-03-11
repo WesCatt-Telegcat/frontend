@@ -29,6 +29,10 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
+import {AlertDialogTrigger} from "@/components/ui/alert-dialog";
+import {Button} from "@/components/ui/button";
+import {AccountModal} from "@/components/modal/AccountModal";
+import {useState} from "react";
 
 export function NavUser({
                             user,
@@ -39,7 +43,9 @@ export function NavUser({
         avatar: string
     }
 }) {
-    const { isMobile } = useSidebar()
+
+    const {isMobile} = useSidebar()
+    const [openAccountModal, setOpenAccountModal] = useState(false);
 
     return (
         <SidebarMenu>
@@ -51,14 +57,14 @@ export function NavUser({
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
                         >
                             <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name} />
+                                <AvatarImage src={user.avatar} alt={user.name}/>
                                 <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-medium">{user.name}</span>
                                 <span className="truncate text-xs">{user.email}</span>
                             </div>
-                            <ChevronsUpDown className="ml-auto size-4" />
+                            <ChevronsUpDown className="ml-auto size-4"/>
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -70,7 +76,7 @@ export function NavUser({
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                 <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
+                                    <AvatarImage src={user.avatar} alt={user.name}/>
                                     <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -79,36 +85,29 @@ export function NavUser({
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator/>
                         <DropdownMenuGroup>
                             <DropdownMenuItem>
-                                <Sparkles />
-                                Upgrade to Pro
+                                <Sparkles/>
+                                赞助我们
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator/>
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <CreditCard />
-                                Billing
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <Bell />
-                                Notifications
+                            <DropdownMenuItem onClick={()=>setOpenAccountModal(true)}>
+                                <BadgeCheck/>
+                                个人资料
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator/>
                         <DropdownMenuItem>
-                            <LogOut />
-                            Log out
+                            <LogOut/>
+                            登出
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
+            <AccountModal onOpenChange={(v)=>setOpenAccountModal(v)} open={openAccountModal}></AccountModal>
         </SidebarMenu>
     )
 }

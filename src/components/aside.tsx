@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {ArchiveX, Command, File, Inbox, Send, Trash2} from "lucide-react"
+import {ArchiveX, Bell, Command, File, Inbox, Send, Trash2} from "lucide-react"
 
 import {NavUser} from "@/components/nav-user"
 import {Label} from "@/components/ui/label"
@@ -22,6 +22,8 @@ import {Switch} from "@/components/ui/switch"
 import Image from "next/image";
 import {Avatar, AvatarImage} from "@/components/ui/avatar";
 import {DropdownMenuDemo, IndexDropDown} from "@/components/index/IndexDropDown";
+import {Point} from "@/components/index/Point";
+import {useState} from "react";
 
 // This is sample data
 const data = {
@@ -37,12 +39,17 @@ const data = {
             icon: Inbox,
             isActive: true,
         },
+        {
+            title: '通知',
+            url: '#',
+            icon: Bell,
+            isActive: false
+        }
     ],
-    mails: [
+    lists: [
         {
             name: "William Smith",
             email: "williamsmith@example.com",
-            subject: "Meeting Tomorrow",
             date: "09:34 AM",
             teaser:
                 "Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.",
@@ -51,7 +58,6 @@ const data = {
         {
             name: "Alice Smith",
             email: "alicesmith@example.com",
-            subject: "Re: Project Update",
             date: "Yesterday",
             teaser:
                 "Thanks for the update. The progress looks great so far.\nLet's schedule a call to discuss the next steps.",
@@ -64,7 +70,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     // Note: I'm using state to show active item.
     // IRL you should use the url/router.
     const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-    const [mails, setMails] = React.useState(data.mails)
+    const [userList, setUserList] = useState(data.lists);
     const {setOpen} = useSidebar()
 
     return (
@@ -107,9 +113,9 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                             }}
                                             onClick={() => {
                                                 setActiveItem(item)
-                                                const mail = data.mails.sort(() => Math.random() - 0.5)
-                                                setMails(
-                                                    mail.slice(
+                                                const lists = data.lists.sort(() => Math.random() - 0.5)
+                                                setUserList(
+                                                    lists.slice(
                                                         0,
                                                         Math.max(5, Math.floor(Math.random() * 10) + 1)
                                                     )
@@ -150,12 +156,12 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                 <SidebarContent>
                     <SidebarGroup className="px-0">
                         <SidebarGroupContent>
-                            {mails.map((mail) => (
+                            {userList.map((user) => (
 
                                 <a
                                     href="#"
-                                    key={mail.email}
-                                    className={`${mail.isActive ? 'bg-muted' : ''} flex flex-col items-start gap-2 border-b py-2 px-4 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
+                                    key={user.email}
+                                    className={`${user.isActive ? 'bg-muted' : ''} flex flex-col items-start gap-2 border-b py-2 px-2 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
                                 >
                                     <div className='flex gap-2  items-center justify-between w-full'>
                                         <div className='flex gap-2  items-center'>
@@ -164,13 +170,17 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                                     src="/user-default-avatar.jpg"
                                                     alt="avatar"/>
                                             </Avatar>
-                                            <span>{mail.name}</span>
+                                            <span>{user.name}</span>
                                         </div>
-                                        <span className="ml-auto text-xs">{mail.date}</span>
+                                        <span className="ml-auto text-xs">{user.date}</span>
                                     </div>
-                                    <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {mail.teaser}
+                                    <div className={"flex"}>
+                                        <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
+                    {user.teaser}
                   </span>
+                                        <Point number={2}></Point>
+                                    </div>
+
                                 </a>
                             ))}
                         </SidebarGroupContent>
