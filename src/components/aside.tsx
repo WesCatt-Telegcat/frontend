@@ -21,7 +21,7 @@ import {
 import {Switch} from "@/components/ui/switch"
 import Image from "next/image";
 import {Avatar, AvatarImage} from "@/components/ui/avatar";
-import {DropdownMenuDemo, IndexDropDown} from "@/components/index/dropdown";
+import {DropdownMenuDemo, IndexDropDown} from "@/components/index/IndexDropDown";
 
 // This is sample data
 const data = {
@@ -46,6 +46,7 @@ const data = {
             date: "09:34 AM",
             teaser:
                 "Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.",
+            isActive: true
         },
         {
             name: "Alice Smith",
@@ -54,6 +55,7 @@ const data = {
             date: "Yesterday",
             teaser:
                 "Thanks for the update. The progress looks great so far.\nLet's schedule a call to discuss the next steps.",
+            isActive: false
         },
     ],
 }
@@ -153,7 +155,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                 <a
                                     href="#"
                                     key={mail.email}
-                                    className="flex flex-col items-start gap-2 border-b py-2 px-4 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                    className={`${mail.isActive ? 'bg-muted' : ''} flex flex-col items-start gap-2 border-b py-2 px-4 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
                                 >
                                     <div className='flex gap-2  items-center justify-between w-full'>
                                         <div className='flex gap-2  items-center'>
