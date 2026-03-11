@@ -8,6 +8,7 @@ import {
     FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import Link from "next/link";
 
 export function SignupForm({
                                className,
@@ -48,6 +49,8 @@ export function SignupForm({
                 </Field>
                 <Field>
                     <Button type="submit">注册</Button>
+                    <Link href={'/login'} className={"text-end underline text-gray-500 text-[14px]"}>已有账号？点我去登录</Link>
+
                 </Field>
             </FieldGroup>
         </form>
