@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import {ArchiveX, Command, File, Inbox, Send, Trash2} from "lucide-react"
+import {Bell, Inbox} from "lucide-react"
 
 import {NavUser} from "@/components/nav-user"
-import {Label} from "@/components/ui/label"
 import {
     Sidebar,
     SidebarContent,
@@ -18,10 +17,11 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
-import {Switch} from "@/components/ui/switch"
 import Image from "next/image";
-import {Avatar, AvatarImage} from "@/components/ui/avatar";
-import {DropdownMenuDemo, IndexDropDown} from "@/components/index/dropdown";
+import {useCallback} from "react";
+import {SidebarInner} from "@/components/index/SidebarInner";
+import {usePathname, useRouter} from "next/navigation";
+import {NotificationSideBar} from "@/components/notification/NotificationSideBar";
 
 // This is sample data
 const data = {
@@ -33,28 +33,16 @@ const data = {
     navMain: [
         {
             title: "聊天",
-            url: "#",
+            url: "/",
             icon: Inbox,
             isActive: true,
         },
-    ],
-    mails: [
         {
-            name: "William Smith",
-            email: "williamsmith@example.com",
-            subject: "Meeting Tomorrow",
-            date: "09:34 AM",
-            teaser:
-                "Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.",
-        },
-        {
-            name: "Alice Smith",
-            email: "alicesmith@example.com",
-            subject: "Re: Project Update",
-            date: "Yesterday",
-            teaser:
-                "Thanks for the update. The progress looks great so far.\nLet's schedule a call to discuss the next steps.",
-        },
+            title: '通知',
+            url: '/notification',
+            icon: Bell,
+            isActive: false
+        }
     ],
 }
 
@@ -62,8 +50,20 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     // Note: I'm using state to show active item.
     // IRL you should use the url/router.
     const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-    const [mails, setMails] = React.useState(data.mails)
-    const {setOpen} = useSidebar()
+    const path = usePathname();
+    const router = useRouter();
+    const SideInnerComponent = useCallback(() => {
+
+        switch (path) {
+            case "/":
+                return <SidebarInner/>
+            case "/notification":
+                return <NotificationSideBar/>;
+            default:
+                break;
+        }
+
+    }, [path]);
 
     return (
         <Sidebar
@@ -104,15 +104,8 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                                 hidden: false,
                                             }}
                                             onClick={() => {
-                                                setActiveItem(item)
-                                                const mail = data.mails.sort(() => Math.random() - 0.5)
-                                                setMails(
-                                                    mail.slice(
-                                                        0,
-                                                        Math.max(5, Math.floor(Math.random() * 10) + 1)
-                                                    )
-                                                )
-                                                setOpen(true)
+                                                router.push(item.url)
+                                                setActiveItem(item);
                                             }}
                                             isActive={activeItem?.title === item.title}
                                             className="px-2.5 md:px-2"
@@ -130,50 +123,8 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                     <NavUser user={data.user}/>
                 </SidebarFooter>
             </Sidebar>
-
-            {/* This is the second sidebar */}
-            {/* We disable collapsible and let it fill remaining space */}
             <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-                <SidebarHeader className="gap-3.5 border-b p-4">
-                    <div className="flex w-full items-center justify-between">
-                        <div className="text-base font-medium text-foreground">
-                            {activeItem?.title}
-                        </div>
-                        <Label className="flex items-center gap-2 text-sm">
-                            <IndexDropDown/>
-                        </Label>
-                    </div>
-                    <SidebarInput placeholder="搜素 邮箱/用户名/聊天记录..."/>
-                </SidebarHeader>
-                <SidebarContent>
-                    <SidebarGroup className="px-0">
-                        <SidebarGroupContent>
-                            {mails.map((mail) => (
-
-                                <a
-                                    href="#"
-                                    key={mail.email}
-                                    className="flex flex-col items-start gap-2 border-b py-2 px-4 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                                >
-                                    <div className='flex gap-2  items-center justify-between w-full'>
-                                        <div className='flex gap-2  items-center'>
-                                            <Avatar>
-                                                <AvatarImage
-                                                    src="/user-default-avatar.jpg"
-                                                    alt="avatar"/>
-                                            </Avatar>
-                                            <span>{mail.name}</span>
-                                        </div>
-                                        <span className="ml-auto text-xs">{mail.date}</span>
-                                    </div>
-                                    <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {mail.teaser}
-                  </span>
-                                </a>
-                            ))}
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                </SidebarContent>
+                <SideInnerComponent/>
             </Sidebar>
         </Sidebar>
     )
