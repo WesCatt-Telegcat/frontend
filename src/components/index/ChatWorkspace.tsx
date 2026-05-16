@@ -5,14 +5,16 @@ import {ChatWindow} from "@/components/index/ChatWindow";
 import {SidebarInner} from "@/components/index/SidebarInner";
 import {useChat} from "@/components/index/chat-provider";
 import {useIsMobile} from "@/hooks/use-mobile";
+import {useSearchParams} from "next/navigation";
 import {cn} from "@/lib/utils";
 
 const SWIPE_EDGE_WIDTH = 32;
 const SWIPE_CLOSE_DISTANCE = 80;
 
 export function ChatWorkspace() {
-    const {selectedFriend, setConversationVisible} = useChat();
+    const {selectedFriend, setConversationVisible, setSelectedFriendId} = useChat();
     const isMobile = useIsMobile();
+    const searchParams = useSearchParams();
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
     const [dragging, setDragging] = useState(false);
@@ -22,6 +24,12 @@ export function ChatWorkspace() {
         offset: 0,
     });
     const chatVisible = Boolean(selectedFriend && mobileChatOpen);
+
+    useEffect(() => {
+        const chatId = searchParams.get("chat");
+
+        setSelectedFriendId(chatId);
+    }, [searchParams, setSelectedFriendId]);
 
     useEffect(() => {
         const visible = isMobile

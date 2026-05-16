@@ -5,6 +5,7 @@ import type {
   FriendRequest,
   FriendSearchResult,
   DonationOrder,
+  MessagePage,
   PaymentMethods,
   SendEncryptedMessageInput,
   User,
@@ -145,13 +146,41 @@ export const friendsApi = {
 }
 
 export const messagesApi = {
-  list(friendId: string) {
-    return apiFetch<EncryptedMessage[]>(`/messages/${friendId}`)
+  list(
+    friendId: string,
+    options?: {
+      cursor?: string | null
+      direction?: "older" | "newer"
+      limit?: number
+    }
+  ) {
+    const params = new URLSearchParams()
+
+    if (options?.cursor) {
+      params.set("cursor", options.cursor)
+    }
+
+    if (options?.direction) {
+      params.set("direction", options.direction)
+    }
+
+    if (options?.limit) {
+      params.set("limit", String(options.limit))
+    }
+
+    const query = params.size ? `?${params.toString()}` : ""
+
+    return apiFetch<MessagePage>(`/messages/${friendId}${query}`)
   },
   send(friendId: string, input: SendEncryptedMessageInput) {
     return apiFetch<EncryptedMessage>(`/messages/${friendId}`, {
       method: "POST",
       body: JSON.stringify(input),
+    })
+  },
+  markRead(friendId: string) {
+    return apiFetch<{ success: boolean }>(`/messages/${friendId}/read`, {
+      method: "POST",
     })
   },
 }

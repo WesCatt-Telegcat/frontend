@@ -4,8 +4,6 @@ import {
     BadgeCheck,
     ChevronsUpDown,
     LogOut,
-    Settings,
-    Sparkles,
 } from "lucide-react"
 
 import {
@@ -30,7 +28,6 @@ import {
 } from "@/components/ui/sidebar"
 import {AccountModal} from "@/components/modal/AccountModal";
 import {useState} from "react";
-import {useRouter} from "next/navigation";
 import {useSession} from "@/components/auth/session-provider";
 import type {User} from "@/lib/types";
 import {useAppTranslations} from "@/i18n/use-app-translations";
@@ -42,7 +39,6 @@ export function NavUser({
 }) {
 
     const {isMobile} = useSidebar()
-    const router = useRouter()
     const {logout} = useSession()
     const t = useAppTranslations()
     const [openAccountModal, setOpenAccountModal] = useState(false);
@@ -98,22 +94,10 @@ export function NavUser({
                                 </div>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator/>
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => router.push("/sponsor")}>
-                                <Sparkles/>
-                                {t("sponsor")}
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator/>
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={()=>setOpenAccountModal(true)}>
                                 <BadgeCheck/>
                                 {t("accountProfile")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push("/settings")}>
-                                <Settings/>
-                                {t("settings")}
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator/>

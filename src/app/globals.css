@@ -163,12 +163,27 @@ button{
   }
 }
 
+@keyframes message-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .copy-float-tip {
   animation: copy-float-tip 1.4s ease-out forwards;
 }
 
 .alert-progress-bar {
   animation: alert-progress-bar linear forwards;
+}
+
+.message-enter {
+  animation: message-enter 240ms ease-out;
 }
 
 .telecat-scrollbar {

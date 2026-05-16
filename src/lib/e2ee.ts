@@ -188,6 +188,7 @@ export async function decryptConversationPreview(
 
     const previewMessage: EncryptedMessage = {
         id: `preview-${friend.id}`,
+        sequence: `preview-${friend.id}`,
         senderId: friend.lastMessageSenderId ?? friend.id,
         receiverId:
             friend.lastMessageSenderId === user.id ? friend.id : user.id,

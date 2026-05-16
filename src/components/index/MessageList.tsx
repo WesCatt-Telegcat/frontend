@@ -1,7 +1,8 @@
 "use client"
 
-import {useEffect, useRef} from "react";
-import {ArrowLeft} from "lucide-react";
+import {useCallback, useMemo, useRef, useState} from "react";
+import {ArrowLeft, ChevronDown} from "lucide-react";
+import {Virtuoso, type VirtuosoHandle} from "react-virtuoso";
 import {Button} from "@/components/ui/button";
 import {MessageBox} from "@/components/index/MessageBox";
 import {MessageTimeDivider} from "@/components/index/MessageTimeDivider";
@@ -12,15 +13,48 @@ import {
 } from "@/lib/message-time";
 import {useAppLocale, useAppTranslations} from "@/i18n/use-app-translations";
 
+const PRELOAD_EDGE_ITEMS = 8;
+
 export function MessageList({onBack}: { onBack?: () => void }) {
-    const {messages, selectedFriend} = useChat();
+    const {
+        messages,
+        firstMessageItemIndex,
+        hasOlderMessages,
+        hasNewerMessages,
+        loadingOlderMessages,
+        loadingNewerMessages,
+        pendingNewerCount,
+        selectedFriend,
+        setConversationAtBottom,
+        acknowledgeCurrentConversation,
+        loadOlderMessages,
+        loadNewerMessages,
+        resendMessage,
+    } = useChat();
     const locale = useAppLocale();
     const t = useAppTranslations();
-    const bottomRef = useRef<HTMLDivElement | null>(null);
+    const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+    const [atBottom, setAtBottom] = useState(true);
 
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({block: "end"});
-    }, [messages]);
+    const initialTopMostItemIndex = useMemo(() => {
+        if (!messages.length) {
+            return 0;
+        }
+
+        return firstMessageItemIndex + messages.length - 1;
+    }, [firstMessageItemIndex, messages.length]);
+
+    const scrollToBottom = useCallback((behavior: "auto" | "smooth" = "smooth") => {
+        if (!messages.length) {
+            return;
+        }
+
+        virtuosoRef.current?.scrollToIndex({
+            index: firstMessageItemIndex + messages.length - 1,
+            align: "end",
+            behavior,
+        });
+    }, [firstMessageItemIndex, messages.length]);
 
     if (!selectedFriend) {
         return (
@@ -52,38 +86,124 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                     </div>
                 </div>
             </div>
-            <div className="telecat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-                {messages.map((message, index) => {
-                    const previousMessage = messages[index - 1];
-                    const showTime = shouldShowMessageTimeDivider(
-                        message.createdAt,
-                        previousMessage?.createdAt
-                    );
+            <div className="relative min-h-0 flex-1">
+                {messages.length ? (
+                    <Virtuoso
+                        key={selectedFriend.id}
+                        ref={virtuosoRef}
+                        data={messages}
+                        firstItemIndex={firstMessageItemIndex}
+                        className="telecat-scrollbar h-full"
+                        initialTopMostItemIndex={initialTopMostItemIndex}
+                        alignToBottom
+                        atBottomThreshold={160}
+                        followOutput={(isAtBottom) =>
+                            pendingNewerCount > 0
+                                ? false
+                                : isAtBottom
+                                    ? "smooth"
+                                    : false
+                        }
+                        atBottomStateChange={(nextAtBottom) => {
+                            setAtBottom(nextAtBottom);
+                            setConversationAtBottom(nextAtBottom);
 
-                    return (
-                        <div className="flex flex-col gap-3" key={message.id}>
-                            {showTime ? (
-                                <MessageTimeDivider>
-                                    {formatMessageTimeDivider(message.createdAt, locale, {
-                                        today: t("messageToday"),
-                                        yesterday: t("messageYesterday"),
-                                    })}
-                                </MessageTimeDivider>
-                            ) : null}
-                            <MessageBox
-                                message={message.content}
-                                isMe={message.isMe}
-                                time={message.createdAt}
-                            />
-                        </div>
-                    )
-                })}
-                {!messages.length ? (
-                    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                            if (
+                                nextAtBottom &&
+                                pendingNewerCount > 0 &&
+                                !hasNewerMessages
+                            ) {
+                                void acknowledgeCurrentConversation();
+                            }
+                        }}
+                        rangeChanged={(range) => {
+                            const firstVisibleOffset = range.startIndex - firstMessageItemIndex;
+                            const lastVisibleOffset =
+                                firstMessageItemIndex + messages.length - 1 - range.endIndex;
+
+                            if (
+                                firstVisibleOffset <= PRELOAD_EDGE_ITEMS &&
+                                hasOlderMessages &&
+                                !loadingOlderMessages
+                            ) {
+                                void loadOlderMessages();
+                            }
+
+                            if (
+                                lastVisibleOffset <= PRELOAD_EDGE_ITEMS &&
+                                hasNewerMessages &&
+                                !loadingNewerMessages
+                            ) {
+                                void loadNewerMessages();
+                            }
+                        }}
+                        itemContent={(index, message) => {
+                            const relativeIndex = index - firstMessageItemIndex;
+                            const previousMessage = messages[relativeIndex - 1];
+                            const showTime = shouldShowMessageTimeDivider(
+                                message.createdAt,
+                                previousMessage?.createdAt
+                            );
+
+                            return (
+                                <div className="px-4 py-1.5">
+                                    <div className="flex flex-col gap-3">
+                                        {showTime ? (
+                                            <MessageTimeDivider>
+                                                {formatMessageTimeDivider(message.createdAt, locale, {
+                                                    today: t("messageToday"),
+                                                    yesterday: t("messageYesterday"),
+                                                })}
+                                            </MessageTimeDivider>
+                                        ) : null}
+                                        <MessageBox
+                                            message={message.content}
+                                            isMe={message.isMe}
+                                            time={message.createdAt}
+                                            deliveryStatus={message.deliveryStatus}
+                                            isNew={message.isNew}
+                                            onRetry={() => resendMessage(message.id)}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        }}
+                    />
+                ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                         {t("noMessages")}
                     </div>
-                ) : null}
-                <div ref={bottomRef}/>
+                )}
+                <div className="pointer-events-none absolute bottom-4 right-4 flex flex-col items-end gap-2">
+                    {pendingNewerCount > 0 ? (
+                        <button
+                            type="button"
+                            className="pointer-events-auto flex items-center gap-2 rounded-full bg-unread px-3 py-2 text-sm text-unread-foreground shadow-sm transition hover:bg-unread/90"
+                            onClick={async () => {
+                                if (hasNewerMessages) {
+                                    await loadNewerMessages();
+                                } else {
+                                    await acknowledgeCurrentConversation();
+                                }
+                                scrollToBottom("smooth");
+                            }}
+                        >
+                            <span>{t("newMessagesCount", {count: pendingNewerCount})}</span>
+                            <ChevronDown data-icon="inline-start"/>
+                        </button>
+                    ) : null}
+                    {!atBottom ? (
+                        <Button
+                            type="button"
+                            size="icon-sm"
+                            className="pointer-events-auto bg-unread text-unread-foreground shadow-sm hover:bg-unread/90"
+                            onClick={() => scrollToBottom("smooth")}
+                        >
+                            <ChevronDown data-icon="inline-start"/>
+                            <span className="sr-only">{t("scrollToBottom")}</span>
+                        </Button>
+                    ) : null}
+                </div>
             </div>
         </div>
     )

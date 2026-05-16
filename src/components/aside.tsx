@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {Bell, Inbox} from "lucide-react"
+import {Bell, Inbox, Settings, Sparkles} from "lucide-react"
 
 import {NavUser} from "@/components/nav-user"
 import {
@@ -27,9 +27,14 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     const path = usePathname();
     const router = useRouter();
     const {user} = useSession();
-    const {friends, requests} = useChat();
+    const {friends, pendingNewerCount, requests, selectedFriendId} = useChat();
     const t = useAppTranslations();
-    const hasUnreadMessages = friends.some((friend) => friend.unread > 0);
+    const hasUnreadMessages = friends.some(
+        (friend) =>
+            friend.unread +
+                (friend.id === selectedFriendId ? pendingNewerCount : 0) >
+            0
+    );
     const hasPendingRequests = requests.length > 0;
     const navMain = [
         {
@@ -43,6 +48,18 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
             url: "/notification",
             icon: Bell,
             hasIndicator: hasPendingRequests,
+        },
+        {
+            title: t("sponsor"),
+            url: "/sponsor",
+            icon: Sparkles,
+            hasIndicator: false,
+        },
+        {
+            title: t("settings"),
+            url: "/settings",
+            icon: Settings,
+            hasIndicator: false,
         }
     ];
     const sideInner = path === "/notification" ? <NotificationSideBar/> : <SidebarInner/>;
@@ -89,15 +106,15 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                                 router.push(item.url)
                                             }}
                                             isActive={path === item.url}
-                                            className="overflow-visible px-2.5 md:px-2"
+                                            className="px-2.5 md:px-2"
                                         >
                                             <span className="relative flex shrink-0">
                                                 <item.icon/>
                                                 {item.hasIndicator ? (
-                                                    <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-unread ring-2 ring-sidebar"/>
+                                                    <span className="absolute right-0 top-0 size-2 rounded-full bg-unread ring-2 ring-sidebar"/>
                                                 ) : null}
                                             </span>
-                                            <span>{item.title}</span>
+                                            <span className="sr-only">{item.title}</span>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                 ))}

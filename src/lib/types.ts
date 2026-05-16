@@ -55,6 +55,7 @@ export type FriendRequest = {
 
 export type EncryptedMessage = {
   id: string
+  sequence: string
   senderId: string
   receiverId: string
   encryptedContent: string
@@ -64,8 +65,22 @@ export type EncryptedMessage = {
   isMe: boolean
 }
 
+export type MessageDeliveryStatus = "sending" | "failed" | "sent"
+
 export type Message = EncryptedMessage & {
   content: string
+  deliveryStatus?: MessageDeliveryStatus
+  isNew?: boolean
+}
+
+export type MessagePage = {
+  items: EncryptedMessage[]
+  page: {
+    hasOlder: boolean
+    hasNewer: boolean
+    oldestCursor: string | null
+    newestCursor: string | null
+  }
 }
 
 export type SendEncryptedMessageInput = {

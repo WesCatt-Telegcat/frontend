@@ -210,16 +210,6 @@ export function SettingsPanel() {
                                         <span className="sr-only">{color.name}</span>
                                     </Button>
                                 ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-10 rounded-md"
-                                    onClick={openCreateAccentEditor}
-                                >
-                                    <Plus data-icon="inline-start"/>
-                                    <span className="sr-only">{t("customAccent")}</span>
-                                </Button>
                                 {customAccentColors.map((color, index) => (
                                     <div key={`${color}-${index}`} className="group relative">
                                         <Button
@@ -253,6 +243,16 @@ export function SettingsPanel() {
                                         </Button>
                                     </div>
                                 ))}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="size-10 rounded-md"
+                                    onClick={openCreateAccentEditor}
+                                >
+                                    <Plus data-icon="inline-start"/>
+                                    <span className="sr-only">{t("customAccent")}</span>
+                                </Button>
                             </div>
                             <div className="border-t pt-3">
                                 <div className="mb-3 text-xs text-muted-foreground">{t("accentTextColor")}</div>
@@ -278,16 +278,6 @@ export function SettingsPanel() {
                                             <span className="sr-only">{color.name}</span>
                                         </Button>
                                     ))}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        className="size-10 rounded-md"
-                                        onClick={openCreateAccentTextEditor}
-                                    >
-                                        <Plus data-icon="inline-start"/>
-                                        <span className="sr-only">{t("customAccentText")}</span>
-                                    </Button>
                                     {customAccentTextColors.map((color, index) => (
                                         <div key={`${color}-${index}`} className="group relative">
                                             <Button
@@ -323,6 +313,16 @@ export function SettingsPanel() {
                                             </Button>
                                         </div>
                                     ))}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="size-10 rounded-md"
+                                        onClick={openCreateAccentTextEditor}
+                                    >
+                                        <Plus data-icon="inline-start"/>
+                                        <span className="sr-only">{t("customAccentText")}</span>
+                                    </Button>
                                 </div>
                             </div>
                         </div>

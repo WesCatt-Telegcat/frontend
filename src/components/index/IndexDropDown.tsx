@@ -234,7 +234,9 @@ export function IndexDropDown() {
                         </Button>
                     </form>
 
-                    <FieldSeparator>{t("or")}</FieldSeparator>
+                    <FieldSeparator className="[&_[data-slot=field-separator-content]]:bg-popover">
+                        {t("or")}
+                    </FieldSeparator>
 
                     <form className="flex flex-col gap-4" onSubmit={handleLink}>
                         <Field data-invalid={Boolean(errors.friendLink)}>

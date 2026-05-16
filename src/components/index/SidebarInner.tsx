@@ -7,12 +7,16 @@ import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {Point} from "@/components/index/Point";
 import {useMemo, useState} from "react";
 import {useChat} from "@/components/index/chat-provider";
+import {usePathname, useRouter, useSearchParams} from "next/navigation";
 import {cn} from "@/lib/utils";
 import dayjs from "dayjs";
 import {useAppTranslations} from "@/i18n/use-app-translations";
 
 export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) {
-    const {friends, selectedFriendId, setSelectedFriendId, loading} = useChat();
+    const {friends, pendingNewerCount, selectedFriendId, setSelectedFriendId, loading} = useChat();
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const t = useAppTranslations();
     const [query, setQuery] = useState("");
     const filteredFriends = useMemo(() => {
@@ -54,8 +58,33 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
                                 type="button"
                                 key={friend.id}
                                 onClick={() => {
-                                    setSelectedFriendId(friend.id);
-                                    onSelectFriend?.();
+                                    const isCurrentFriend = selectedFriendId === friend.id;
+                                    const nextParams = new URLSearchParams(searchParams.toString());
+
+                                    if (isCurrentFriend) {
+                                        setSelectedFriendId(null);
+                                        nextParams.delete("chat");
+                                    } else {
+                                        setSelectedFriendId(friend.id);
+                                        nextParams.set("chat", friend.id);
+                                    }
+
+                                    const nextUrl = nextParams.toString()
+                                        ? `/?${nextParams.toString()}`
+                                        : "/";
+
+                                    if (pathname === "/" && isCurrentFriend) {
+                                        router.replace(nextUrl);
+                                        return;
+                                    }
+
+                                    if (pathname !== "/" || !isCurrentFriend) {
+                                        router.push(nextUrl);
+                                    }
+
+                                    if (!isCurrentFriend) {
+                                        onSelectFriend?.();
+                                    }
                                 }}
                                 className={cn(
                                     "flex w-full flex-col items-start gap-2 border-b px-2 py-2 text-left text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -88,7 +117,12 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
                                     <span className="line-clamp-2 min-w-0 flex-1 text-xs whitespace-break-spaces text-muted-foreground">
                                         {friend.lastMessage}
                                     </span>
-                                    <Point number={friend.unread}/>
+                                    <Point
+                                        number={
+                                            friend.unread +
+                                            (friend.id === selectedFriendId ? pendingNewerCount : 0)
+                                        }
+                                    />
                                 </div>
                             </button>
                         ))}
