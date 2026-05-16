@@ -11,59 +11,35 @@ import {
     SidebarGroup,
     SidebarGroupContent,
     SidebarHeader,
-    SidebarInput,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    useSidebar,
 } from "@/components/ui/sidebar"
 import Image from "next/image";
-import {useCallback} from "react";
 import {SidebarInner} from "@/components/index/SidebarInner";
 import {usePathname, useRouter} from "next/navigation";
 import {NotificationSideBar} from "@/components/notification/NotificationSideBar";
-
-// This is sample data
-const data = {
-    user: {
-        name: "shadcn",
-        email: "m@example.com",
-        avatar: "/avatars/shadcn.jpg",
-    },
-    navMain: [
-        {
-            title: "聊天",
-            url: "/",
-            icon: Inbox,
-            isActive: true,
-        },
-        {
-            title: '通知',
-            url: '/notification',
-            icon: Bell,
-            isActive: false
-        }
-    ],
-}
+import {useSession} from "@/components/auth/session-provider";
+import {useAppTranslations} from "@/i18n/use-app-translations";
 
 export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
-    // Note: I'm using state to show active item.
-    // IRL you should use the url/router.
-    const [activeItem, setActiveItem] = React.useState(data.navMain[0])
     const path = usePathname();
     const router = useRouter();
-    const SideInnerComponent = useCallback(() => {
-
-        switch (path) {
-            case "/":
-                return <SidebarInner/>
-            case "/notification":
-                return <NotificationSideBar/>;
-            default:
-                break;
+    const {user} = useSession();
+    const t = useAppTranslations();
+    const navMain = [
+        {
+            title: t("chat"),
+            url: "/",
+            icon: Inbox,
+        },
+        {
+            title: t("notification"),
+            url: "/notification",
+            icon: Bell,
         }
-
-    }, [path]);
+    ];
+    const sideInner = path === "/notification" ? <NotificationSideBar/> : <SidebarInner/>;
 
     return (
         <Sidebar
@@ -84,8 +60,8 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                             <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
                                 <a href="#">
                                     <div
-                                        className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                                        <Image width={20} height={20} alt={"Logo"} src={'logo.svg'}></Image>
+                                        className="flex aspect-square size-8 items-center justify-center rounded-lg bg-unread text-unread-foreground">
+                                        <Image width={20} height={20} alt={"Logo"} src={'/logo.svg'}></Image>
                                     </div>
                                 </a>
                             </SidebarMenuButton>
@@ -96,7 +72,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                     <SidebarGroup>
                         <SidebarGroupContent className="px-1.5 md:px-0">
                             <SidebarMenu>
-                                {data.navMain.map((item) => (
+                                {navMain.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             tooltip={{
@@ -105,9 +81,8 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                             }}
                                             onClick={() => {
                                                 router.push(item.url)
-                                                setActiveItem(item);
                                             }}
-                                            isActive={activeItem?.title === item.title}
+                                            isActive={path === item.url}
                                             className="px-2.5 md:px-2"
                                         >
                                             <item.icon/>
@@ -120,11 +95,11 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                     </SidebarGroup>
                 </SidebarContent>
                 <SidebarFooter>
-                    <NavUser user={data.user}/>
+                    <NavUser user={user}/>
                 </SidebarFooter>
             </Sidebar>
             <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-                <SideInnerComponent/>
+                {sideInner}
             </Sidebar>
         </Sidebar>
     )

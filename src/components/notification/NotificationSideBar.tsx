@@ -1,38 +1,24 @@
-import {SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarInput} from "@/components/ui/sidebar";
+"use client"
+
+import {SidebarContent, SidebarGroup, SidebarGroupContent, SidebarHeader} from "@/components/ui/sidebar";
 import {Label} from "@/components/ui/label";
 import {IndexDropDown} from "@/components/index/IndexDropDown";
-import {Avatar, AvatarImage} from "@/components/ui/avatar";
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {Point} from "@/components/index/Point";
-import * as React from "react";
-import {useState} from "react";
+import {useChat} from "@/components/index/chat-provider";
+import dayjs from "dayjs";
+import {useAppTranslations} from "@/i18n/use-app-translations";
 
 export function NotificationSideBar() {
-
-    const [list, setList] = useState([
-        {
-            name: "William Smith",
-            email: "williamsmith@example.com",
-            date: "09:34 AM",
-            teaser:
-                "Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.",
-            isActive: true
-        },
-        {
-            name: "Alice Smith",
-            email: "alicesmith@example.com",
-            date: "Yesterday",
-            teaser:
-                "Thanks for the update. The progress looks great so far.\nLet's schedule a call to discuss the next steps.",
-            isActive: false
-        },
-    ]);
+    const {requests} = useChat();
+    const t = useAppTranslations();
 
     return (
         <>
             <SidebarHeader className="gap-3.5 border-b p-4">
                 <div className="flex w-full items-center justify-between">
                     <div className="text-base font-medium text-foreground">
-                        通知
+                        {t("notification")}
                     </div>
                     <Label className="flex items-center gap-2 text-sm">
                         <IndexDropDown/>
@@ -42,33 +28,36 @@ export function NotificationSideBar() {
             <SidebarContent>
                 <SidebarGroup className="px-0">
                     <SidebarGroupContent>
-                        {list.map((user) => (
-
-                            <a
-                                href="#"
-                                key={user.email}
-                                className={`${user.isActive ? 'bg-muted' : ''} flex flex-col items-start gap-2 border-b py-2 px-2 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
+                        {requests.map((request) => (
+                            <div
+                                key={request.id}
+                                className="flex flex-col items-start gap-2 border-b px-2 py-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
                             >
-                                <div className='flex gap-2  items-center justify-between w-full'>
-                                    <div className='flex gap-2  items-center'>
+                                <div className='flex w-full items-center justify-between gap-2'>
+                                    <div className='flex min-w-0 items-center gap-2'>
                                         <Avatar>
                                             <AvatarImage
-                                                src="/user-default-avatar.jpg"
+                                                src={request.requester.avatar ?? "/user-default-avatar.jpg"}
                                                 alt="avatar"/>
+                                            <AvatarFallback>{request.requester.name.slice(0, 2)}</AvatarFallback>
                                         </Avatar>
-                                        <span>{user.name}</span>
+                                        <span className="truncate">{request.requester.name}</span>
                                     </div>
-                                    <span className="ml-auto text-xs">{user.date}</span>
+                                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                                        {dayjs(request.createdAt).format("HH:mm")}
+                                    </span>
                                 </div>
-                                <div className={"flex"}>
-                                        <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {user.teaser}
-                  </span>
-                                    <Point number={2}></Point>
+                                <div className="flex w-full items-center gap-2">
+                                    <span className="line-clamp-2 min-w-0 flex-1 text-xs text-muted-foreground">
+                                        {t("requestLine")}
+                                    </span>
+                                    <Point number={1}/>
                                 </div>
-
-                            </a>
+                            </div>
                         ))}
+                        {!requests.length ? (
+                            <div className="p-4 text-sm text-muted-foreground">{t("noRequests")}</div>
+                        ) : null}
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>

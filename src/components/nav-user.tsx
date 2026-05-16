@@ -2,10 +2,9 @@
 
 import {
     BadgeCheck,
-    Bell,
     ChevronsUpDown,
-    CreditCard,
     LogOut,
+    Settings,
     Sparkles,
 } from "lucide-react"
 
@@ -29,23 +28,33 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
-import {AlertDialogTrigger} from "@/components/ui/alert-dialog";
-import {Button} from "@/components/ui/button";
 import {AccountModal} from "@/components/modal/AccountModal";
 import {useState} from "react";
+import {useRouter} from "next/navigation";
+import {useSession} from "@/components/auth/session-provider";
+import type {User} from "@/lib/types";
+import {useAppTranslations} from "@/i18n/use-app-translations";
 
 export function NavUser({
                             user,
                         }: {
-    user: {
-        name: string
-        email: string
-        avatar: string
-    }
+    user: User | null
 }) {
 
     const {isMobile} = useSidebar()
+    const router = useRouter()
+    const {logout} = useSession()
+    const t = useAppTranslations()
     const [openAccountModal, setOpenAccountModal] = useState(false);
+    const displayUser = user ?? {
+        name: "Telecat",
+        email: "未登录",
+        avatar: null,
+        friendCode: "",
+        friendLink: "",
+        id: "",
+        encryptionPublicKey: null,
+    }
 
     return (
         <SidebarMenu>
@@ -57,12 +66,14 @@ export function NavUser({
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
                         >
                             <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name}/>
-                                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                <AvatarImage src={displayUser.avatar ?? "/user-default-avatar.jpg"} alt={displayUser.name}/>
+                                <AvatarFallback className="rounded-lg">{displayUser.name.slice(0, 2)}</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">{user.name}</span>
-                                <span className="truncate text-xs">{user.email}</span>
+                                <span className="truncate font-medium">{displayUser.name}</span>
+                                <span className="truncate text-xs text-sidebar-foreground/70">
+                                    {displayUser.friendCode || displayUser.email}
+                                </span>
                             </div>
                             <ChevronsUpDown className="ml-auto size-4"/>
                         </SidebarMenuButton>
@@ -76,38 +87,44 @@ export function NavUser({
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                 <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name}/>
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                    <AvatarImage src={displayUser.avatar ?? "/user-default-avatar.jpg"} alt={displayUser.name}/>
+                                    <AvatarFallback className="rounded-lg">{displayUser.name.slice(0, 2)}</AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
-                                    <span className="truncate font-medium">{user.name}</span>
-                                    <span className="truncate text-xs">{user.email}</span>
+                                    <span className="truncate font-medium">{displayUser.name}</span>
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {displayUser.friendCode || displayUser.email}
+                                    </span>
                                 </div>
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator/>
                         <DropdownMenuGroup>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push("/sponsor")}>
                                 <Sparkles/>
-                                赞助我们
+                                {t("sponsor")}
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator/>
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={()=>setOpenAccountModal(true)}>
                                 <BadgeCheck/>
-                                个人资料
+                                {t("accountProfile")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push("/settings")}>
+                                <Settings/>
+                                {t("settings")}
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator/>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={logout}>
                             <LogOut/>
-                            登出
+                            {t("logout")}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>
-            <AccountModal onOpenChange={(v)=>setOpenAccountModal(v)} open={openAccountModal}></AccountModal>
+            <AccountModal user={displayUser} onOpenChange={(v)=>setOpenAccountModal(v)} open={openAccountModal}></AccountModal>
         </SidebarMenu>
     )
 }
