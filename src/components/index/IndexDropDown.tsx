@@ -25,6 +25,69 @@ import type {FriendSearchResult} from "@/lib/types";
 import {FieldErrorLine} from "@/components/form/field-error-line";
 import {useAppTranslations} from "@/i18n/use-app-translations";
 
+function mapFriendError(message: string, t: ReturnType<typeof useAppTranslations>) {
+    if (
+        message.includes("唯一 ID 长度必须在 4 到 40 个字符之间") ||
+        message.includes("friendCode must be longer than or equal to 4 characters") ||
+        message.includes("friendCode must be shorter than or equal to 40 characters")
+    ) {
+        return t("friendCodeInvalidLength");
+    }
+
+    if (message.includes("好友申请已发送")) {
+        return t("requestPending");
+    }
+
+    if (message.includes("没有找到该用户")) {
+        return t("friendNotFound");
+    }
+
+    if (message.includes("不能添加自己")) {
+        return t("cannotAddSelf");
+    }
+
+    if (message.includes("已经是好友")) {
+        return t("alreadyFriends");
+    }
+
+    if (message.includes("重新登录以更新加密密钥")) {
+        return t("friendKeyRefreshRequired");
+    }
+
+    if (message.includes("还没有初始化加密密钥")) {
+        return t("friendKeyMissing");
+    }
+
+    if (message.includes("好友链接") && message.includes("无效")) {
+        return t("invalidFriendLink");
+    }
+
+    return message;
+}
+
+function mapRelationLabel(
+    relation: FriendSearchResult["relation"],
+    t: ReturnType<typeof useAppTranslations>
+) {
+    if (relation === "SELF") {
+        return t("relationSelf");
+    }
+
+    if (relation === "FRIEND") {
+        return t("relationFriend");
+    }
+
+    if (relation === "REQUESTED") {
+        return t("relationRequested");
+    }
+
+    if (relation === "NEED_ACCEPT") {
+        return t("relationNeedAccept");
+    }
+
+    return t("relationNone");
+}
+
 export function IndexDropDown() {
     const {searchFriend, sendFriendRequest, addFriendByLink} = useChat();
     const t = useAppTranslations();
@@ -50,7 +113,10 @@ export function IndexDropDown() {
             setResult(await searchFriend(friendCode));
         } catch (err) {
             setResult(null);
-            setErrors({friendCode: err instanceof Error ? err.message : t("search")});
+            setErrors({
+                friendCode:
+                    err instanceof Error ? mapFriendError(err.message, t) : t("search"),
+            });
         } finally {
             setPending(false);
         }
@@ -71,7 +137,12 @@ export function IndexDropDown() {
             await sendFriendRequest(friendCode);
             setMessage(t("requestSent"));
         } catch (err) {
-            setErrors({friendCode: err instanceof Error ? err.message : t("sendRequest")});
+            setErrors({
+                friendCode:
+                    err instanceof Error
+                        ? mapFriendError(err.message, t)
+                        : t("sendRequest"),
+            });
         } finally {
             setPending(false);
         }
@@ -94,7 +165,12 @@ export function IndexDropDown() {
             setFriendLink("");
             setOpen(false);
         } catch (err) {
-            setErrors({friendLink: err instanceof Error ? err.message : t("addByLink")});
+            setErrors({
+                friendLink:
+                    err instanceof Error
+                        ? mapFriendError(err.message, t)
+                        : t("addByLink"),
+            });
         } finally {
             setPending(false);
         }
@@ -141,10 +217,19 @@ export function IndexDropDown() {
                                     <div className="truncate text-sm font-medium">{result.name}</div>
                                     <div className="truncate text-xs text-muted-foreground">{result.email}</div>
                                 </div>
-                                <Badge variant="secondary">{result.relation}</Badge>
+                                <Badge variant="secondary">{mapRelationLabel(result.relation, t)}</Badge>
                             </div>
                         ) : null}
-                        <Button type="submit" disabled={pending || !friendCode}>
+                        <Button
+                            type="submit"
+                            disabled={
+                                pending ||
+                                !friendCode ||
+                                result?.relation === "REQUESTED" ||
+                                result?.relation === "FRIEND" ||
+                                result?.relation === "SELF"
+                            }
+                        >
                             {t("sendRequest")}
                         </Button>
                     </form>

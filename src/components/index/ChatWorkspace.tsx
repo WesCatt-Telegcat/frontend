@@ -1,16 +1,18 @@
 "use client"
 
-import {type TouchEvent, useRef, useState} from "react";
+import {type TouchEvent, useEffect, useRef, useState} from "react";
 import {ChatWindow} from "@/components/index/ChatWindow";
 import {SidebarInner} from "@/components/index/SidebarInner";
 import {useChat} from "@/components/index/chat-provider";
+import {useIsMobile} from "@/hooks/use-mobile";
 import {cn} from "@/lib/utils";
 
 const SWIPE_EDGE_WIDTH = 32;
 const SWIPE_CLOSE_DISTANCE = 80;
 
 export function ChatWorkspace() {
-    const {selectedFriend} = useChat();
+    const {selectedFriend, setConversationVisible} = useChat();
+    const isMobile = useIsMobile();
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [dragOffset, setDragOffset] = useState(0);
     const [dragging, setDragging] = useState(false);
@@ -20,6 +22,18 @@ export function ChatWorkspace() {
         offset: 0,
     });
     const chatVisible = Boolean(selectedFriend && mobileChatOpen);
+
+    useEffect(() => {
+        const visible = isMobile
+            ? Boolean(selectedFriend && mobileChatOpen)
+            : Boolean(selectedFriend);
+
+        setConversationVisible(visible);
+
+        return () => {
+            setConversationVisible(false);
+        };
+    }, [isMobile, mobileChatOpen, selectedFriend, setConversationVisible]);
 
     function openMobileChat() {
         setDragOffset(0);
@@ -81,8 +95,8 @@ export function ChatWorkspace() {
     }
 
     return (
-        <div className="relative flex min-h-0 flex-1 overflow-hidden">
-            <div className="hidden min-h-0 flex-1 md:flex">
+        <div className="relative flex h-full min-h-0 flex-1 overflow-hidden">
+            <div className="hidden min-h-0 flex-1 overflow-hidden md:flex">
                 <ChatWindow/>
             </div>
 

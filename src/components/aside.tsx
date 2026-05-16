@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import Image from "next/image";
 import {SidebarInner} from "@/components/index/SidebarInner";
+import {useChat} from "@/components/index/chat-provider";
 import {usePathname, useRouter} from "next/navigation";
 import {NotificationSideBar} from "@/components/notification/NotificationSideBar";
 import {useSession} from "@/components/auth/session-provider";
@@ -26,17 +27,22 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     const path = usePathname();
     const router = useRouter();
     const {user} = useSession();
+    const {friends, requests} = useChat();
     const t = useAppTranslations();
+    const hasUnreadMessages = friends.some((friend) => friend.unread > 0);
+    const hasPendingRequests = requests.length > 0;
     const navMain = [
         {
             title: t("chat"),
             url: "/",
             icon: Inbox,
+            hasIndicator: hasUnreadMessages,
         },
         {
             title: t("notification"),
             url: "/notification",
             icon: Bell,
+            hasIndicator: hasPendingRequests,
         }
     ];
     const sideInner = path === "/notification" ? <NotificationSideBar/> : <SidebarInner/>;
@@ -83,9 +89,14 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                                                 router.push(item.url)
                                             }}
                                             isActive={path === item.url}
-                                            className="px-2.5 md:px-2"
+                                            className="overflow-visible px-2.5 md:px-2"
                                         >
-                                            <item.icon/>
+                                            <span className="relative flex shrink-0">
+                                                <item.icon/>
+                                                {item.hasIndicator ? (
+                                                    <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-unread ring-2 ring-sidebar"/>
+                                                ) : null}
+                                            </span>
                                             <span>{item.title}</span>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>

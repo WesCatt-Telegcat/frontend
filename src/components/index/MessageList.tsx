@@ -31,56 +31,60 @@ export function MessageList({onBack}: { onBack?: () => void }) {
     }
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-xl border p-4">
-            <div className="mb-2 flex items-center gap-3 border-b pb-3">
-                {onBack ? (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="-ml-2 shrink-0"
-                        onClick={onBack}
-                    >
-                        <ArrowLeft data-icon="inline-start"/>
-                        <span className="sr-only">{t("chat")}</span>
-                    </Button>
-                ) : null}
-                <div className="min-w-0">
-                    <div className="truncate font-medium">{selectedFriend.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">{selectedFriend.email}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border">
+            <div className="shrink-0 border-b px-4 pb-3 pt-4">
+                <div className="flex items-center gap-3">
+                    {onBack ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="-ml-2 shrink-0"
+                            onClick={onBack}
+                        >
+                            <ArrowLeft data-icon="inline-start"/>
+                            <span className="sr-only">{t("chat")}</span>
+                        </Button>
+                    ) : null}
+                    <div className="min-w-0">
+                        <div className="truncate font-medium">{selectedFriend.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{selectedFriend.email}</div>
+                    </div>
                 </div>
             </div>
-            {messages.map((message, index) => {
-                const previousMessage = messages[index - 1];
-                const showTime = shouldShowMessageTimeDivider(
-                    message.createdAt,
-                    previousMessage?.createdAt
-                );
+            <div className="telecat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
+                {messages.map((message, index) => {
+                    const previousMessage = messages[index - 1];
+                    const showTime = shouldShowMessageTimeDivider(
+                        message.createdAt,
+                        previousMessage?.createdAt
+                    );
 
-                return (
-                    <div className="flex flex-col gap-3" key={message.id}>
-                        {showTime ? (
-                            <MessageTimeDivider>
-                                {formatMessageTimeDivider(message.createdAt, locale, {
-                                    today: t("messageToday"),
-                                    yesterday: t("messageYesterday"),
-                                })}
-                            </MessageTimeDivider>
-                        ) : null}
-                        <MessageBox
-                            message={message.content}
-                            isMe={message.isMe}
-                            time={message.createdAt}
-                        />
+                    return (
+                        <div className="flex flex-col gap-3" key={message.id}>
+                            {showTime ? (
+                                <MessageTimeDivider>
+                                    {formatMessageTimeDivider(message.createdAt, locale, {
+                                        today: t("messageToday"),
+                                        yesterday: t("messageYesterday"),
+                                    })}
+                                </MessageTimeDivider>
+                            ) : null}
+                            <MessageBox
+                                message={message.content}
+                                isMe={message.isMe}
+                                time={message.createdAt}
+                            />
+                        </div>
+                    )
+                })}
+                {!messages.length ? (
+                    <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                        {t("noMessages")}
                     </div>
-                )
-            })}
-            {!messages.length ? (
-                <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-                    {t("noMessages")}
-                </div>
-            ) : null}
-            <div ref={bottomRef}/>
+                ) : null}
+                <div ref={bottomRef}/>
+            </div>
         </div>
     )
 }

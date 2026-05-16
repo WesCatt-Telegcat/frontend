@@ -35,7 +35,7 @@ export function InputBox() {
     }
 
     return (
-        <form className="shrink-0" onSubmit={handleSubmit}>
+        <form className="shrink-0 p-1" onSubmit={handleSubmit}>
             <InputGroup className="min-h-14 items-center">
                 <InputGroupTextarea
                     value={content}

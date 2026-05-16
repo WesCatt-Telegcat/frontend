@@ -14,6 +14,7 @@ import { useSession } from "@/components/auth/session-provider"
 import { FriendRequestRealtimeAlert } from "@/components/notification/FriendRequestRealtimeAlert"
 import { friendsApi, messagesApi, tokenStore } from "@/lib/api"
 import {
+  decryptConversationPreview,
   decryptMessageFromFriend,
   encryptMessageForFriend,
 } from "@/lib/e2ee"
@@ -33,6 +34,7 @@ type ChatContextValue = {
   messages: Message[]
   loading: boolean
   setSelectedFriendId: (id: string) => void
+  setConversationVisible: (visible: boolean) => void
   refresh: () => Promise<void>
   searchFriend: (friendCode: string) => Promise<FriendSearchResult>
   sendFriendRequest: (friendCode: string) => Promise<void>
@@ -65,12 +67,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [selectedFriendId, setSelectedFriendIdState] = useState<string | null>(
     null
   )
+  const [conversationVisible, setConversationVisibleState] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
-  const [friendRequestAlert, setFriendRequestAlert] =
-    useState<FriendRequest | null>(null)
+  const [friendRequestAlerts, setFriendRequestAlerts] = useState<FriendRequest[]>([])
   const friendsRef = useRef<FriendConversation[]>([])
   const selectedFriendIdRef = useRef<string | null>(null)
+  const conversationVisibleRef = useRef(false)
 
   useEffect(() => {
     friendsRef.current = friends
@@ -79,6 +82,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     selectedFriendIdRef.current = selectedFriendId
   }, [selectedFriendId])
+
+  useEffect(() => {
+    conversationVisibleRef.current = conversationVisible
+  }, [conversationVisible])
+
+  const markFriendRead = useCallback((friendId: string) => {
+    setFriends((current) => {
+      const nextFriends = current.map((friend) =>
+        friend.id === friendId ? { ...friend, unread: 0 } : friend
+      )
+
+      friendsRef.current = nextFriends
+
+      return nextFriends
+    })
+  }, [])
 
   const loadMessages = useCallback(
     async (friendId: string | null) => {
@@ -102,6 +121,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       )
 
       setMessages(nextMessages)
+
+      if (
+        selectedFriendIdRef.current === friendId &&
+        conversationVisibleRef.current
+      ) {
+        markFriendRead(friendId)
+      }
+    },
+    [markFriendRead, user]
+  )
+
+  const hydrateFriendPreviews = useCallback(
+    async (items: FriendConversation[]) => {
+      if (!user) {
+        return items
+      }
+
+      const nextFriends = await Promise.all(
+        items.map(async (friend) => ({
+          ...friend,
+          lastMessage: await decryptConversationPreview(user, friend),
+        }))
+      )
+
+      return nextFriends
     },
     [user]
   )
@@ -111,19 +155,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       friendsApi.list(),
       friendsApi.incomingRequests(),
     ])
+    const hydratedFriends = await hydrateFriendPreviews(nextFriends)
 
-    setFriends(nextFriends)
-    friendsRef.current = nextFriends
+    setFriends(hydratedFriends)
+    friendsRef.current = hydratedFriends
     setRequests(nextRequests)
     setSelectedFriendIdState((current) => {
-      if (current && nextFriends.some((friend) => friend.id === current)) {
+      if (current && hydratedFriends.some((friend) => friend.id === current)) {
         return current
       }
 
       return null
     })
     setLoading(false)
-  }, [])
+  }, [hydrateFriendPreviews])
 
   useEffect(() => {
     queueMicrotask(() => void refresh())
@@ -132,6 +177,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     queueMicrotask(() => void loadMessages(selectedFriendId))
   }, [loadMessages, selectedFriendId])
+
+  useEffect(() => {
+    if (!conversationVisible || !selectedFriendIdRef.current) {
+      return
+    }
+
+    queueMicrotask(() => void loadMessages(selectedFriendIdRef.current))
+  }, [conversationVisible, loadMessages])
 
   useEffect(() => {
     const token = tokenStore.get()
@@ -149,18 +202,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     socket.on("message:new", (message: RealtimeMessage) => {
       const currentFriendId = selectedFriendIdRef.current
 
-      void refresh()
-
       if (
+        conversationVisibleRef.current &&
         currentFriendId &&
         (message.senderId === currentFriendId || message.receiverId === currentFriendId)
       ) {
-        void loadMessages(currentFriendId)
+        void loadMessages(currentFriendId).then(() => refresh())
+        return
       }
+
+      void refresh()
     })
 
     socket.on("friend-request:new", (request: FriendRequest) => {
-      setFriendRequestAlert(request)
+      setFriendRequestAlerts((current) => [
+        ...current.filter((item) => item.id !== request.id),
+        request,
+      ])
       void refresh()
     })
 
@@ -220,6 +278,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setSelectedFriendIdState(id)
   }, [])
 
+  const setConversationVisible = useCallback((visible: boolean) => {
+    setConversationVisibleState(visible)
+  }, [])
+
   const searchFriend = useCallback((friendCode: string) => {
     return friendsApi.search(friendCode)
   }, [])
@@ -269,6 +331,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       messages,
       loading,
       setSelectedFriendId,
+      setConversationVisible,
       refresh,
       searchFriend,
       sendFriendRequest,
@@ -289,6 +352,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       selectedFriendId,
       sendFriendRequest,
       sendMessage,
+      setConversationVisible,
       setSelectedFriendId,
     ]
   )
@@ -296,15 +360,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   return (
     <ChatContext.Provider value={value}>
       {children}
-      {friendRequestAlert ? (
-        <FriendRequestRealtimeAlert
-          request={friendRequestAlert}
-          onClose={() => setFriendRequestAlert(null)}
-          onOpenRequests={() => {
-            setFriendRequestAlert(null)
-            router.push("/notification")
-          }}
-        />
+      {friendRequestAlerts.length ? (
+        <div className="fixed right-4 top-16 z-50 flex w-[calc(100vw-2rem)] max-w-sm flex-col gap-3">
+          {friendRequestAlerts.map((request) => (
+            <FriendRequestRealtimeAlert
+              key={request.id}
+              request={request}
+              onClose={() => {
+                setFriendRequestAlerts((current) =>
+                  current.filter((item) => item.id !== request.id)
+                )
+              }}
+              onOpenRequests={() => {
+                setFriendRequestAlerts((current) =>
+                  current.filter((item) => item.id !== request.id)
+                )
+                router.push("/notification")
+              }}
+            />
+          ))}
+        </div>
       ) : null}
     </ChatContext.Provider>
   )

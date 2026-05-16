@@ -1,3 +1,4 @@
+import nacl from "tweetnacl";
 import type {
     EncryptedMessage,
     FriendConversation,
@@ -8,10 +9,11 @@ import type {
 
 const KEY_PREFIX = "telecat_e2ee";
 const UNAVAILABLE_MESSAGE = "[无法解密消息]";
+const FRIEND_KEY_REFRESH_MESSAGE = "对方需要重新登录以更新加密密钥";
 
 type StoredKeys = {
     publicKey: string
-    privateKey: JsonWebKey
+    secretKey: string
 }
 
 function keyStorageName(userId: string) {
@@ -39,6 +41,18 @@ function base64ToBytes(value: string) {
     return bytes;
 }
 
+function isValidBase64Key(value: unknown, length: number) {
+    if (typeof value !== "string" || !value.trim()) {
+        return false;
+    }
+
+    try {
+        return base64ToBytes(value).length === length;
+    } catch {
+        return false;
+    }
+}
+
 function readStoredKeys(userId: string): StoredKeys | null {
     const raw = window.localStorage.getItem(keyStorageName(userId));
 
@@ -47,27 +61,32 @@ function readStoredKeys(userId: string): StoredKeys | null {
     }
 
     try {
-        return JSON.parse(raw) as StoredKeys;
+        const parsed = JSON.parse(raw) as Partial<StoredKeys>;
+
+        if (
+            isValidBase64Key(parsed.publicKey, nacl.box.publicKeyLength) &&
+            isValidBase64Key(parsed.secretKey, nacl.box.secretKeyLength)
+        ) {
+            return {
+                publicKey: parsed.publicKey as string,
+                secretKey: parsed.secretKey as string,
+            };
+        }
+
+        window.localStorage.removeItem(keyStorageName(userId));
+        return null;
     } catch {
         window.localStorage.removeItem(keyStorageName(userId));
         return null;
     }
 }
 
-async function generateStoredKeys(userId: string) {
-    const pair = await window.crypto.subtle.generateKey(
-        {
-            name: "ECDH",
-            namedCurve: "P-256",
-        },
-        true,
-        ["deriveKey"]
-    );
-    const publicKey = JSON.stringify(
-        await window.crypto.subtle.exportKey("jwk", pair.publicKey)
-    );
-    const privateKey = await window.crypto.subtle.exportKey("jwk", pair.privateKey);
-    const storedKeys = {publicKey, privateKey};
+function generateStoredKeys(userId: string) {
+    const pair = nacl.box.keyPair();
+    const storedKeys = {
+        publicKey: bytesToBase64(pair.publicKey),
+        secretKey: bytesToBase64(pair.secretKey),
+    };
 
     window.localStorage.setItem(keyStorageName(userId), JSON.stringify(storedKeys));
 
@@ -78,70 +97,20 @@ async function getStoredKeys(userId: string) {
     return readStoredKeys(userId) ?? generateStoredKeys(userId);
 }
 
-async function importPrivateKey(privateKey: JsonWebKey) {
-    return window.crypto.subtle.importKey(
-        "jwk",
-        privateKey,
-        {
-            name: "ECDH",
-            namedCurve: "P-256",
-        },
-        false,
-        ["deriveKey"]
-    );
-}
-
-async function importPublicKey(publicKey: string) {
-    return window.crypto.subtle.importKey(
-        "jwk",
-        JSON.parse(publicKey) as JsonWebKey,
-        {
-            name: "ECDH",
-            namedCurve: "P-256",
-        },
-        false,
-        []
-    );
-}
-
-async function deriveConversationKey(userId: string, friendPublicKey: string) {
-    const storedKeys = await getStoredKeys(userId);
-    const privateKey = await importPrivateKey(storedKeys.privateKey);
-    const publicKey = await importPublicKey(friendPublicKey);
-
-    return window.crypto.subtle.deriveKey(
-        {
-            name: "ECDH",
-            public: publicKey,
-        },
-        privateKey,
-        {
-            name: "AES-GCM",
-            length: 256,
-        },
-        false,
-        ["encrypt", "decrypt"]
-    );
-}
-
 export async function ensureUserEncryptionKey(user: User) {
-    if (!window.crypto?.subtle) {
-        throw new Error("当前浏览器不支持端到端加密");
-    }
-
     await getStoredKeys(user.email);
 
     return user;
 }
 
 export async function getOrCreateEncryptionPublicKey(identity: string) {
-    if (!window.crypto?.subtle) {
-        throw new Error("当前浏览器不支持端到端加密");
-    }
-
     const storedKeys = await getStoredKeys(identity.trim().toLowerCase());
 
     return storedKeys.publicKey;
+}
+
+export function isValidEncryptionPublicKey(value: string | null | undefined) {
+    return isValidBase64Key(value, nacl.box.publicKeyLength);
 }
 
 export async function encryptMessageForFriend(
@@ -153,20 +122,22 @@ export async function encryptMessageForFriend(
         throw new Error("对方还没有初始化加密密钥");
     }
 
-    const key = await deriveConversationKey(user.email, friend.encryptionPublicKey);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await window.crypto.subtle.encrypt(
-        {
-            name: "AES-GCM",
-            iv,
-        },
-        key,
-        new TextEncoder().encode(content)
+    if (!isValidEncryptionPublicKey(friend.encryptionPublicKey)) {
+        throw new Error(FRIEND_KEY_REFRESH_MESSAGE);
+    }
+
+    const storedKeys = await getStoredKeys(user.email);
+    const nonce = nacl.randomBytes(nacl.box.nonceLength);
+    const encrypted = nacl.box(
+        new TextEncoder().encode(content),
+        nonce,
+        base64ToBytes(friend.encryptionPublicKey),
+        base64ToBytes(storedKeys.secretKey)
     );
 
     return {
-        encryptedContent: bytesToBase64(new Uint8Array(encrypted)),
-        encryptionIv: bytesToBase64(iv),
+        encryptedContent: bytesToBase64(encrypted),
+        encryptionIv: bytesToBase64(nonce),
     };
 }
 
@@ -175,7 +146,7 @@ export async function decryptMessageFromFriend(
     friend: FriendConversation,
     message: EncryptedMessage
 ): Promise<Message> {
-    if (!friend.encryptionPublicKey) {
+    if (!friend.encryptionPublicKey || !isValidEncryptionPublicKey(friend.encryptionPublicKey)) {
         return {
             ...message,
             content: UNAVAILABLE_MESSAGE,
@@ -183,15 +154,17 @@ export async function decryptMessageFromFriend(
     }
 
     try {
-        const key = await deriveConversationKey(user.email, friend.encryptionPublicKey);
-        const decrypted = await window.crypto.subtle.decrypt(
-            {
-                name: "AES-GCM",
-                iv: base64ToBytes(message.encryptionIv),
-            },
-            key,
-            base64ToBytes(message.encryptedContent)
+        const storedKeys = await getStoredKeys(user.email);
+        const decrypted = nacl.box.open(
+            base64ToBytes(message.encryptedContent),
+            base64ToBytes(message.encryptionIv),
+            base64ToBytes(friend.encryptionPublicKey),
+            base64ToBytes(storedKeys.secretKey)
         );
+
+        if (!decrypted) {
+            throw new Error("Failed to decrypt");
+        }
 
         return {
             ...message,
@@ -203,4 +176,33 @@ export async function decryptMessageFromFriend(
             content: UNAVAILABLE_MESSAGE,
         };
     }
+}
+
+export async function decryptConversationPreview(
+    user: User,
+    friend: FriendConversation
+) {
+    if (!friend.lastMessageEncryptedContent || !friend.lastMessageEncryptionIv) {
+        return friend.lastMessage;
+    }
+
+    const previewMessage: EncryptedMessage = {
+        id: `preview-${friend.id}`,
+        senderId: friend.lastMessageSenderId ?? friend.id,
+        receiverId:
+            friend.lastMessageSenderId === user.id ? friend.id : user.id,
+        encryptedContent: friend.lastMessageEncryptedContent,
+        encryptionIv: friend.lastMessageEncryptionIv,
+        encryptionVersion: friend.lastMessageEncryptionVersion ?? "v1",
+        createdAt: friend.lastMessageAt,
+        isMe: friend.lastMessageSenderId === user.id,
+    };
+
+    const decryptedMessage = await decryptMessageFromFriend(
+        user,
+        friend,
+        previewMessage
+    );
+
+    return decryptedMessage.content;
 }

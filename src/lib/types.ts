@@ -31,6 +31,10 @@ export type FriendConversation = {
   friendCode: string
   encryptionPublicKey: string | null
   lastMessage: string
+  lastMessageEncryptedContent: string | null
+  lastMessageEncryptionIv: string | null
+  lastMessageEncryptionVersion: string | null
+  lastMessageSenderId: string | null
   lastMessageAt: string
   unread: number
   online: boolean
@@ -67,4 +71,36 @@ export type Message = EncryptedMessage & {
 export type SendEncryptedMessageInput = {
   encryptedContent: string
   encryptionIv: string
+}
+
+export type PaymentProvider = "ALIPAY" | "WECHAT"
+
+export type PaymentOrderStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CLOSED"
+  | "EXPIRED"
+
+export type PaymentMethodStatus = {
+  available: boolean
+  reason: string | null
+}
+
+export type PaymentMethods = {
+  alipay: PaymentMethodStatus
+  wechat: PaymentMethodStatus
+}
+
+export type DonationOrder = {
+  id: string
+  provider: PaymentProvider
+  status: PaymentOrderStatus
+  amountFen: number
+  outTradeNo: string
+  qrContent: string | null
+  qrContentType: string | null
+  expiresAt: string | null
+  paidAt: string | null
+  createdAt: string
 }

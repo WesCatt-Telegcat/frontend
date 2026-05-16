@@ -14,14 +14,24 @@ import {
     accentTextColorPresets,
     type AppPreferencesInitialState,
     type Locale,
+    type LocalePreferenceMode,
     preferenceCookieNames,
     type ThemeMode,
+    type ThemePreferenceMode,
 } from "@/lib/app-preferences";
 import {appMessages} from "@/i18n/messages";
+
+declare global {
+    interface Window {
+        __telecatResolvedTheme?: ThemeMode;
+    }
+}
 
 type AppPreferencesValue = {
     locale: Locale;
     theme: ThemeMode;
+    localeMode: LocalePreferenceMode;
+    themeMode: ThemePreferenceMode;
     accentColor: string;
     accentTextColor: string;
     customAccentColors: string[];
@@ -46,6 +56,15 @@ function setPreferenceCookie(name: string, value: string) {
     document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
+function resolveSystemTheme() {
+    if (typeof window === "undefined") {
+        return "light" as ThemeMode;
+    }
+
+    return window.__telecatResolvedTheme ??
+        (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+}
+
 export function AppPreferencesProvider({
     children,
     initialPreferences,
@@ -54,7 +73,17 @@ export function AppPreferencesProvider({
     initialPreferences: AppPreferencesInitialState
 }) {
     const [locale, setLocaleState] = useState<Locale>(initialPreferences.locale);
-    const [theme, setThemeState] = useState<ThemeMode>(initialPreferences.theme);
+    const [localeMode, setLocaleMode] = useState<LocalePreferenceMode>(
+        initialPreferences.localeMode
+    );
+    const [theme, setThemeState] = useState<ThemeMode>(() =>
+        initialPreferences.themeMode === "system"
+            ? resolveSystemTheme()
+            : initialPreferences.theme
+    );
+    const [themeMode, setThemeMode] = useState<ThemePreferenceMode>(
+        initialPreferences.themeMode
+    );
     const [accentColor, setAccentColorState] = useState<string>(initialPreferences.accentColor);
     const [accentTextColor, setAccentTextColorState] = useState<string>(
         initialPreferences.accentTextColor
@@ -68,15 +97,37 @@ export function AppPreferencesProvider({
 
     useEffect(() => {
         document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-        window.localStorage.setItem(preferenceCookieNames.locale, locale);
-        setPreferenceCookie(preferenceCookieNames.locale, locale);
-    }, [locale]);
+        if (localeMode === "manual") {
+            window.localStorage.setItem(preferenceCookieNames.locale, locale);
+            setPreferenceCookie(preferenceCookieNames.locale, locale);
+            setPreferenceCookie(preferenceCookieNames.localeMode, "manual");
+        }
+    }, [locale, localeMode]);
 
     useEffect(() => {
         document.documentElement.classList.toggle("dark", theme === "dark");
-        window.localStorage.setItem(preferenceCookieNames.theme, theme);
-        setPreferenceCookie(preferenceCookieNames.theme, theme);
-    }, [theme]);
+        if (themeMode === "manual") {
+            window.localStorage.setItem(preferenceCookieNames.theme, theme);
+            setPreferenceCookie(preferenceCookieNames.theme, theme);
+            setPreferenceCookie(preferenceCookieNames.themeMode, "manual");
+        }
+    }, [theme, themeMode]);
+
+    useEffect(() => {
+        if (themeMode !== "system") {
+            return;
+        }
+
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const updateTheme = () => {
+            setThemeState(mediaQuery.matches ? "dark" : "light");
+        };
+
+        updateTheme();
+        mediaQuery.addEventListener("change", updateTheme);
+
+        return () => mediaQuery.removeEventListener("change", updateTheme);
+    }, [themeMode]);
 
     useEffect(() => {
         document.documentElement.style.setProperty("--unread", accentColor);
@@ -111,18 +162,22 @@ export function AppPreferencesProvider({
     }, [customAccentTextColors]);
 
     const toggleLocale = useCallback(() => {
+        setLocaleMode("manual");
         setLocaleState((current) => (current === "zh" ? "en" : "zh"));
     }, []);
 
     const toggleTheme = useCallback(() => {
+        setThemeMode("manual");
         setThemeState((current) => (current === "light" ? "dark" : "light"));
     }, []);
 
     const setLocale = useCallback((nextLocale: Locale) => {
+        setLocaleMode("manual");
         setLocaleState(nextLocale);
     }, []);
 
     const setTheme = useCallback((nextTheme: ThemeMode) => {
+        setThemeMode("manual");
         setThemeState(nextTheme);
     }, []);
 
@@ -198,6 +253,8 @@ export function AppPreferencesProvider({
         () => ({
             locale,
             theme,
+            localeMode,
+            themeMode,
             accentColor,
             accentTextColor,
             customAccentColors,
@@ -223,12 +280,14 @@ export function AppPreferencesProvider({
             customAccentColors,
             customAccentTextColors,
             locale,
+            localeMode,
             removeCustomAccentTextColor,
             setAccentColor,
             setAccentTextColor,
             setLocale,
             setTheme,
             theme,
+            themeMode,
             toggleLocale,
             toggleTheme,
             updateCustomAccentColor,

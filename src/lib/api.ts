@@ -4,6 +4,8 @@ import type {
   FriendConversation,
   FriendRequest,
   FriendSearchResult,
+  DonationOrder,
+  PaymentMethods,
   SendEncryptedMessageInput,
   User,
 } from "@/lib/types"
@@ -102,6 +104,12 @@ export const authApi = {
   me() {
     return apiFetch<User>("/auth/me")
   },
+  syncEncryptionKey(encryptionPublicKey: string) {
+    return apiFetch<User>("/auth/me/encryption-key", {
+      method: "POST",
+      body: JSON.stringify({ encryptionPublicKey }),
+    })
+  },
 }
 
 export const friendsApi = {
@@ -145,5 +153,24 @@ export const messagesApi = {
       method: "POST",
       body: JSON.stringify(input),
     })
+  },
+}
+
+export const paymentsApi = {
+  methods() {
+    return apiFetch<PaymentMethods>("/payments/methods")
+  },
+  createOrder(input: {
+    provider: "ALIPAY" | "WECHAT"
+    amountFen: number
+    title?: string
+  }) {
+    return apiFetch<DonationOrder>("/payments/orders", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })
+  },
+  getOrder(orderId: string) {
+    return apiFetch<DonationOrder>(`/payments/orders/${orderId}`)
   },
 }

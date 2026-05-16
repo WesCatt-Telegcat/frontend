@@ -154,8 +154,41 @@ button{
   }
 }
 
+@keyframes alert-progress-bar {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
 .copy-float-tip {
   animation: copy-float-tip 1.4s ease-out forwards;
+}
+
+.alert-progress-bar {
+  animation: alert-progress-bar linear forwards;
+}
+
+.telecat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+}
+
+.telecat-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.telecat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.telecat-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--foreground) 22%, transparent);
+  background-clip: padding-box;
 }
 
 .logo-mask {
