@@ -98,11 +98,11 @@ async function writeInstallerInclude(installerLocales) {
     '  CreateDirectory "$APPDATA\\Telecat"',
     `  StrCpy $0 "${defaultLocale}"`,
     ...installerLocales.flatMap((locale) => [
-    `  StrCmp $LANGUAGE ${locale.lcid} 0 +2`,
+      `  StrCmp $LANGUAGE ${locale.lcid} 0 +2`,
       `  StrCpy $0 "${locale.appLocale}"`,
     ]),
     '  FileOpen $1 "$APPDATA\\Telecat\\installer-locale.json" w',
-    '  FileWrite $1 "{$"locale$":$"$0$"}"',
+    '  FileWrite $1 "$0"',
     "  FileClose $1",
     "!macroend",
     "",

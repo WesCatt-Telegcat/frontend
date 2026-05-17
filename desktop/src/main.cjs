@@ -93,8 +93,15 @@ async function applyInstallerLocalePreference() {
 
   try {
     const raw = await readFile(localeFile, "utf8");
-    const parsed = JSON.parse(raw);
-    const locale = normalizeAppLocale(parsed?.locale);
+    let parsedLocale = null;
+
+    try {
+      parsedLocale = JSON.parse(raw)?.locale ?? null;
+    } catch {
+      parsedLocale = raw;
+    }
+
+    const locale = normalizeAppLocale(parsedLocale);
 
     if (!locale) {
       await rm(localeFile, { force: true });
