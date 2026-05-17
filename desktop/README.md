@@ -16,14 +16,14 @@ Use the one-click scripts in [`package.json`](./package.json).
 Windows PowerShell:
 
 ```powershell
-$env:NEXT_PUBLIC_API_BASE_URL="https://api.example.com"
+$env:NEXT_PUBLIC_API_BASE_URL="http://1.15.94.158:2617"
 npm run dist:win
 ```
 
 macOS:
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
+NEXT_PUBLIC_API_BASE_URL=http://1.15.94.158:2617 \
 npm run dist:mac
 ```
 
@@ -35,6 +35,6 @@ Desktop packaging reads values in this order:
 - `../.env.production`
 - fallback defaults:
   - `NEXT_PUBLIC_APP_URL=http://127.0.0.1:2616`
-  - `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:2617`
+  - `NEXT_PUBLIC_API_BASE_URL=http://1.15.94.158:2617`
 
 If you already maintain deployment addresses in `frontend/.env.production`, desktop packaging will reuse them automatically.

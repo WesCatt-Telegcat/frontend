@@ -33,11 +33,10 @@ jobs:
 
       - name: Build frontend standalone
         env:
-          DESKTOP_NEXT_PUBLIC_API_BASE_URL: ${{ vars.DESKTOP_NEXT_PUBLIC_API_BASE_URL }}
           NEXT_DIST_DIR: .next-electron-desktop
           NEXT_TELEMETRY_DISABLED: 1
           NEXT_PUBLIC_APP_URL: http://127.0.0.1:2616
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.DESKTOP_NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_API_BASE_URL: http://1.15.94.158:2617
         run: npm run build -- --webpack
 
       - name: Copy renderer bundle

@@ -37,7 +37,7 @@ if (-not $env:NEXT_PUBLIC_API_BASE_URL) {
   $env:NEXT_PUBLIC_API_BASE_URL = (Get-FrontendEnvValue "NEXT_PUBLIC_API_BASE_URL")
 }
 if (-not $env:NEXT_PUBLIC_API_BASE_URL) {
-  $env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:2617"
+  $env:NEXT_PUBLIC_API_BASE_URL = "http://1.15.94.158:2617"
 }
 
 Push-Location $frontendDir

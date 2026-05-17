@@ -32,7 +32,7 @@ if [[ -z "${NEXT_PUBLIC_APP_URL}" ]]; then
 fi
 export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-$(read_frontend_env NEXT_PUBLIC_API_BASE_URL 2>/dev/null || true)}"
 if [[ -z "${NEXT_PUBLIC_API_BASE_URL}" ]]; then
-  export NEXT_PUBLIC_API_BASE_URL="http://127.0.0.1:2617"
+  export NEXT_PUBLIC_API_BASE_URL="http://1.15.94.158:2617"
 fi
 
 pushd "$FRONTEND_DIR" >/dev/null
