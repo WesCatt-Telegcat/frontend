@@ -1,6 +1,6 @@
 "use client"
 
-import {useCallback, useMemo, useRef, useState} from "react";
+import {useCallback, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {ArrowLeft, ChevronDown} from "lucide-react";
 import {Virtuoso, type VirtuosoHandle} from "react-virtuoso";
 import {Button} from "@/components/ui/button";
@@ -35,6 +35,8 @@ export function MessageList({onBack}: { onBack?: () => void }) {
     const locale = useAppLocale();
     const t = useAppTranslations();
     const virtuosoRef = useRef<VirtuosoHandle | null>(null);
+    const scrollerRef = useRef<HTMLElement | null>(null);
+    const prependAnchorRef = useRef<{ messageId: string; top: number } | null>(null);
     const [atBottom, setAtBottom] = useState(true);
 
     const initialTopMostItemIndex = useMemo(() => {
@@ -56,6 +58,53 @@ export function MessageList({onBack}: { onBack?: () => void }) {
             behavior,
         });
     }, [firstMessageItemIndex, messages.length]);
+
+    const requestOlderMessages = useCallback((firstVisibleOffset: number) => {
+        if (loadingOlderMessages || !hasOlderMessages || prependAnchorRef.current) {
+            return;
+        }
+
+        const anchorMessage = messages[Math.max(0, firstVisibleOffset)];
+        const anchorElement = anchorMessage
+            ? scrollerRef.current?.querySelector<HTMLElement>(`[data-message-id="${anchorMessage.id}"]`)
+            : null;
+
+        if (anchorMessage && anchorElement) {
+            prependAnchorRef.current = {
+                messageId: anchorMessage.id,
+                top: anchorElement.getBoundingClientRect().top,
+            };
+        }
+
+        void loadOlderMessages();
+    }, [hasOlderMessages, loadingOlderMessages, loadOlderMessages, messages]);
+
+    useLayoutEffect(() => {
+        if (loadingOlderMessages) {
+            return;
+        }
+
+        const anchor = prependAnchorRef.current;
+        const scrollerElement = scrollerRef.current;
+
+        if (!anchor || !scrollerElement) {
+            return;
+        }
+
+        const anchorElement = scrollerElement.querySelector<HTMLElement>(
+            `[data-message-id="${anchor.messageId}"]`
+        );
+
+        if (anchorElement) {
+            const delta = anchorElement.getBoundingClientRect().top - anchor.top;
+
+            if (Math.abs(delta) > 0.5) {
+                scrollerElement.scrollTop += delta;
+            }
+        }
+
+        prependAnchorRef.current = null;
+    }, [firstMessageItemIndex, loadingOlderMessages, messages]);
 
     if (!selectedFriend) {
         return (
@@ -92,6 +141,9 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                     <Virtuoso
                         key={selectedFriend.id}
                         ref={virtuosoRef}
+                        scrollerRef={(element) => {
+                            scrollerRef.current = element instanceof HTMLElement ? element : null;
+                        }}
                         data={messages}
                         firstItemIndex={firstMessageItemIndex}
                         className="telecat-scrollbar h-full"
@@ -113,7 +165,7 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                                 hasOlderMessages &&
                                 !loadingOlderMessages
                             ) {
-                                void loadOlderMessages();
+                                requestOlderMessages(firstVisibleOffset);
                             }
 
                             if (
@@ -152,7 +204,7 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                             );
 
                             return (
-                                <div className="px-4 py-1.5">
+                                <div className="px-4 py-1.5" data-message-id={message.id}>
                                     <div className="flex flex-col gap-3">
                                         {showTime ? (
                                             <MessageTimeDivider>

@@ -50,3 +50,9 @@ next-env.d.ts
 .next-electron-desktop
 
 .next-electron-direct
+
+# desktop app
+/desktop/node_modules
+/desktop/.bundle
+/desktop/.renderer-build
+/desktop/release

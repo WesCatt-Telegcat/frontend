@@ -1,0 +1,51 @@
+{
+  "name": "telecat-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main.cjs",
+  "scripts": {
+    "prepare:renderer:win": ".\\scripts\\prepare-renderer-win.cmd",
+    "prepare:renderer:mac": "bash ./scripts/prepare-renderer.sh",
+    "dist:win": "npm run prepare:renderer:win && npm exec electron-builder -- --win nsis zip",
+    "dist:mac": "npm run prepare:renderer:mac && npm exec electron-builder -- --mac dmg zip"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.telecat.desktop",
+    "productName": "Telecat",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".bundle/frontend",
+        "to": "frontend"
+      }
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.social-networking",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
