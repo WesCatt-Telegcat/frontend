@@ -1,3 +1,11 @@
+export type EncryptionKeyPayload = {
+  encryptionPublicKey: string
+  encryptedPrivateKey: string
+  encryptionKeySalt: string
+  encryptionKeyIv: string
+  encryptionKeyVersion: string
+}
+
 export type User = {
   id: string
   email: string
@@ -6,6 +14,10 @@ export type User = {
   friendLink: string
   avatar: string | null
   encryptionPublicKey: string | null
+  encryptedPrivateKey: string | null
+  encryptionKeySalt: string | null
+  encryptionKeyIv: string | null
+  encryptionKeyVersion: string | null
 }
 
 export type AuthResponse = {
@@ -62,6 +74,7 @@ export type EncryptedMessage = {
   encryptionIv: string
   encryptionVersion: string
   createdAt: string
+  readAt: string | null
   isMe: boolean
 }
 

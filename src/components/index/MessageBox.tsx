@@ -28,15 +28,26 @@ export function MessageBox({
                     alt="avatar"/>
                 <AvatarFallback>{isMe ? "我" : "友"}</AvatarFallback>
             </Avatar>
-            <div className={cn("flex items-end gap-2", isMe && "flex-row-reverse")}>
+            <div
+                className={cn(
+                    "flex min-w-0 flex-1 items-end gap-2",
+                    isMe ? "justify-end" : "justify-start"
+                )}
+            >
                 <div
                     className={cn(
-                        "flex h-auto max-w-[72%] min-w-[100px] flex-col items-start rounded-xl px-4 py-2",
+                        "flex h-auto min-w-0 flex-col items-start overflow-hidden rounded-xl px-4 py-2",
                         isMe ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted",
-                        isNew && "message-enter"
+                        ((isMe && deliveryStatus === "sending") || (!isMe && isNew)) && "message-enter"
                     )}
+                    style={{width: "fit-content", maxWidth: "65%"}}
                 >
-                    <p className="whitespace-pre-wrap break-words text-sm">{message}</p>
+                    <p
+                        className="w-full whitespace-pre-wrap text-sm"
+                        style={{wordBreak: "break-all", overflowWrap: "anywhere"}}
+                    >
+                        {message}
+                    </p>
                     <div className="w-full text-end text-[11px] opacity-70">{dayjs(time).format('HH:mm')}</div>
                 </div>
                 {isMe && deliveryStatus === "sending" ? (

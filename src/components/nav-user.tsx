@@ -50,6 +50,10 @@ export function NavUser({
         friendLink: "",
         id: "",
         encryptionPublicKey: null,
+        encryptedPrivateKey: null,
+        encryptionKeySalt: null,
+        encryptionKeyIv: null,
+        encryptionKeyVersion: null,
     }
 
     return (

@@ -44,7 +44,8 @@ type ChatContextValue = {
   setSelectedFriendId: (id: string | null) => void
   setConversationVisible: (visible: boolean) => void
   setConversationAtBottom: (atBottom: boolean) => void
-  acknowledgeCurrentConversation: () => Promise<void>
+  acknowledgeCurrentConversation: (messageIds: string[]) => Promise<void>
+  markMessagesAsSeen: (startIndex: number, endIndex: number) => void
   loadOlderMessages: () => Promise<void>
   loadNewerMessages: () => Promise<void>
   refresh: () => Promise<void>
@@ -94,13 +95,43 @@ type ConversationWindowState = {
 const INITIAL_MESSAGE_ITEM_INDEX = 100000
 const MESSAGE_PAGE_SIZE = 30
 
+function toSafeCount(value: unknown) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : 0
+
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+function createLocalMessageId() {
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return `local-${crypto.randomUUID()}`
+    }
+
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = crypto.getRandomValues(new Uint8Array(16))
+      const hex = Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("")
+
+      return `local-${hex}`
+    }
+  }
+
+  return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 function createOptimisticMessage(
   userId: string,
   friendId: string,
   content: string,
   status: MessageDeliveryStatus,
   createdAt = new Date().toISOString(),
-  id = `local-${crypto.randomUUID()}`
+  id = createLocalMessageId()
 ): Message {
   return {
     id,
@@ -111,6 +142,7 @@ function createOptimisticMessage(
     encryptionIv: "",
     encryptionVersion: "v1",
     createdAt,
+    readAt: null,
     isMe: true,
     content,
     deliveryStatus: status,
@@ -154,6 +186,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const conversationVisibleRef = useRef(false)
   const conversationAtBottomRef = useRef(true)
   const conversationWindowRef = useRef<ConversationWindowState>(createEmptyConversationWindow())
+  const pendingReadIdsRef = useRef<Map<string, Set<string>>>(new Map())
+  const acknowledgingReadFriendIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     friendsRef.current = friends
@@ -198,12 +232,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
-  const markFriendRead = useCallback((friendId: string) => {
+  const decreaseFriendUnread = useCallback((friendId: string, count: number) => {
+    const safeCount = toSafeCount(count)
+
+    if (safeCount <= 0) {
+      return
+    }
+
     setFriends((current) => {
       let changed = false
       const nextFriends = current.map((friend) =>
-        friend.id === friendId && friend.unread > 0
-          ? ((changed = true), { ...friend, unread: 0 })
+        friend.id === friendId && toSafeCount(friend.unread) > 0
+          ? ((changed = true), {
+              ...friend,
+              unread: Math.max(0, toSafeCount(friend.unread) - safeCount),
+            })
           : friend
       )
 
@@ -216,6 +259,35 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return nextFriends
     })
   }, [])
+
+  const markMessagesAsSeen = useCallback((startIndex: number, endIndex: number) => {
+    updateConversationWindow((current) => {
+      const visibleNewMessages = current.items.slice(startIndex, endIndex + 1)
+      const seenCount = visibleNewMessages.filter(
+        (message) => !message.isMe && message.isNew
+      ).length
+
+      if (seenCount === 0) {
+        return current
+      }
+
+      return {
+        ...current,
+        items: current.items.map((message, index) =>
+          index >= startIndex &&
+          index <= endIndex &&
+          !message.isMe &&
+          message.isNew
+            ? {
+                ...message,
+                isNew: false,
+              }
+            : message
+        ),
+        pendingNewerCount: Math.max(0, toSafeCount(current.pendingNewerCount) - seenCount),
+      }
+    })
+  }, [updateConversationWindow])
 
   const decryptMessages = useCallback(
     async (friendId: string, page: MessagePage) => {
@@ -230,7 +302,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       return Promise.all(
-        page.items.map((message) => decryptMessageFromFriend(user, friend, message))
+        page.items.map(async (message) => {
+          const decryptedMessage = await decryptMessageFromFriend(user, friend, message)
+
+          return {
+            ...decryptedMessage,
+            isNew: !decryptedMessage.isMe && !decryptedMessage.readAt,
+          }
+        })
       )
     },
     [user]
@@ -239,10 +318,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const loadConversationPage = useCallback(
     async (
       friendId: string,
-      direction: "initial" | "older" | "newer",
-      options?: {
-        consumePending?: boolean
-      }
+      direction: "initial" | "older" | "newer"
     ) => {
       if (!user) {
         return
@@ -281,6 +357,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         limit: MESSAGE_PAGE_SIZE,
       })
       const decryptedMessages = await decryptMessages(friendId, page)
+      const friendUnread =
+        toSafeCount(friendsRef.current.find((item) => item.id === friendId)?.unread) ||
+        decryptedMessages.filter((message) => !message.isMe && message.isNew).length
 
       updateConversationWindow((current) => {
         if (direction === "initial") {
@@ -292,7 +371,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             newestCursor: page.page.newestCursor,
             hasOlder: page.page.hasOlder,
             hasNewer: page.page.hasNewer,
-            pendingNewerCount: 0,
+            pendingNewerCount: friendUnread,
             loadingOlder: false,
             loadingNewer: false,
           }
@@ -314,21 +393,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           items: [...current.items, ...decryptedMessages],
           newestCursor: page.page.newestCursor,
           hasNewer: page.page.hasNewer,
-          pendingNewerCount: options?.consumePending
-            ? Math.max(0, current.pendingNewerCount - decryptedMessages.length)
-            : current.pendingNewerCount,
           loadingNewer: false,
         }
       })
-
-      if (
-        selectedFriendIdRef.current === friendId &&
-        conversationVisibleRef.current
-      ) {
-        markFriendRead(friendId)
-      }
     },
-    [decryptMessages, markFriendRead, updateConversationWindow, user]
+    [decryptMessages, updateConversationWindow, user]
   )
 
   const hydrateFriendPreviews = useCallback(
@@ -369,25 +438,57 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setLoading(false)
   }, [hydrateFriendPreviews])
 
-  const acknowledgeCurrentConversation = useCallback(async () => {
+  const acknowledgeCurrentConversation = useCallback(async (messageIds: string[]) => {
     const friendId = selectedFriendIdRef.current
+    const dedupedMessageIds = Array.from(new Set(messageIds))
 
-    if (!friendId) {
+    if (!friendId || dedupedMessageIds.length === 0) {
       return
     }
 
-    await messagesApi.markRead(friendId)
-    markFriendRead(friendId)
-    updateConversationWindow((current) =>
-      current.friendId === friendId
-        ? {
-            ...current,
-            pendingNewerCount: 0,
-          }
-        : current
-    )
-    await refresh()
-  }, [markFriendRead, refresh, updateConversationWindow])
+    const pendingIds =
+      pendingReadIdsRef.current.get(friendId) ?? new Set<string>()
+
+    dedupedMessageIds.forEach((messageId) => {
+      pendingIds.add(messageId)
+    })
+
+    pendingReadIdsRef.current.set(friendId, pendingIds)
+
+    if (acknowledgingReadFriendIdsRef.current.has(friendId)) {
+      return
+    }
+
+    acknowledgingReadFriendIdsRef.current.add(friendId)
+
+    try {
+      while ((pendingReadIdsRef.current.get(friendId)?.size ?? 0) > 0) {
+        const batch = Array.from(pendingReadIdsRef.current.get(friendId) ?? [])
+
+        pendingReadIdsRef.current.set(friendId, new Set())
+
+        try {
+          const result = await messagesApi.markRead(friendId, {
+            messageIds: batch,
+          })
+
+          decreaseFriendUnread(friendId, result.count)
+        } catch {
+          const retryIds =
+            pendingReadIdsRef.current.get(friendId) ?? new Set<string>()
+
+          batch.forEach((messageId) => {
+            retryIds.add(messageId)
+          })
+
+          pendingReadIdsRef.current.set(friendId, retryIds)
+          break
+        }
+      }
+    } finally {
+      acknowledgingReadFriendIdsRef.current.delete(friendId)
+    }
+  }, [decreaseFriendUnread])
 
   useEffect(() => {
     queueMicrotask(() => void refresh())
@@ -413,12 +514,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (
       currentWindow.friendId === currentFriendId &&
       currentFriendId === selectedFriend?.id &&
-      selectedFriend.unread > 0
+      toSafeCount(selectedFriend.unread) > 0
     ) {
       updateConversationWindow((current) => ({
         ...current,
-        hasNewer: true,
-        pendingNewerCount: Math.max(current.pendingNewerCount, selectedFriend.unread),
+        pendingNewerCount: Math.max(
+          toSafeCount(current.pendingNewerCount),
+          toSafeCount(selectedFriend.unread)
+        ),
       }))
       return
     }
@@ -428,7 +531,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
 
     queueMicrotask(() => void loadConversationPage(currentFriendId, "initial"))
-  }, [conversationVisible, loadConversationPage, selectedFriend?.id, selectedFriend?.unread, updateConversationWindow])
+    return
+  }, [
+    conversationVisible,
+    loadConversationPage,
+    selectedFriend?.id,
+    selectedFriend?.unread,
+    updateConversationWindow,
+  ])
 
   useEffect(() => {
     if (pathname === "/") {
@@ -488,8 +598,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             encryptionIv: message.encryptionIv,
             encryptionVersion: message.encryptionVersion,
             createdAt: message.createdAt,
+            readAt: null,
             isMe: message.senderId === user.id,
           }).then((decryptedMessage) => {
+            const isImmediatelyVisible = conversationAtBottomRef.current
+
             updateConversationWindow((current) => {
               if (
                 current.friendId !== currentFriendId ||
@@ -500,17 +613,26 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
               return {
                 ...current,
-                items: [...current.items, { ...decryptedMessage, isNew: true }],
+                items: [
+                  ...current.items,
+                  {
+                    ...decryptedMessage,
+                    readAt: isImmediatelyVisible
+                      ? new Date().toISOString()
+                      : decryptedMessage.readAt,
+                    isNew: !isImmediatelyVisible,
+                  },
+                ],
                 newestCursor: decryptedMessage.sequence,
                 hasNewer: false,
-                pendingNewerCount: conversationAtBottomRef.current
+                pendingNewerCount: isImmediatelyVisible
                   ? 0
-                  : current.pendingNewerCount + 1,
+                  : toSafeCount(current.pendingNewerCount) + 1,
               }
             })
 
-            if (conversationAtBottomRef.current) {
-              void acknowledgeCurrentConversation()
+            if (isImmediatelyVisible) {
+              void acknowledgeCurrentConversation([decryptedMessage.id])
             } else {
               void refresh()
             }
@@ -523,7 +645,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             ? {
                 ...current,
                 hasNewer: true,
-                pendingNewerCount: current.pendingNewerCount + 1,
+                pendingNewerCount: toSafeCount(current.pendingNewerCount) + 1,
               }
             : current
         )
@@ -674,6 +796,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                       encryptionVersion: sentMessage.encryptionVersion,
                       createdAt: sentMessage.createdAt,
                       deliveryStatus: "sent",
+                      isNew: false,
                     }
                   : message
               ),
@@ -750,9 +873,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    await loadConversationPage(selectedFriendIdRef.current, "newer", {
-      consumePending: true,
-    })
+    await loadConversationPage(selectedFriendIdRef.current, "newer")
   }, [loadConversationPage])
 
   const value = useMemo(
@@ -773,6 +894,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setConversationVisible,
       setConversationAtBottom,
       acknowledgeCurrentConversation,
+      markMessagesAsSeen,
       loadOlderMessages,
       loadNewerMessages,
       refresh,
@@ -803,6 +925,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setConversationAtBottom,
       setConversationVisible,
       setSelectedFriendId,
+      markMessagesAsSeen,
     ]
   )
 

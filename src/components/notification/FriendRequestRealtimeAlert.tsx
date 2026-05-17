@@ -5,7 +5,6 @@ import {Bell, X} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {
     Alert,
-    AlertAction,
     AlertDescription,
     AlertTitle,
 } from "@/components/ui/alert";
@@ -27,6 +26,7 @@ export function FriendRequestRealtimeAlert({
 }) {
     const t = useAppTranslations();
     const [closing, setClosing] = useState(false);
+    const [remainingMs, setRemainingMs] = useState(ALERT_DURATION_MS);
 
     const handleClose = useCallback(() => {
         setClosing(true);
@@ -46,8 +46,14 @@ export function FriendRequestRealtimeAlert({
         const timer = window.setTimeout(() => {
             handleClose();
         }, ALERT_DURATION_MS);
+        const countdown = window.setInterval(() => {
+            setRemainingMs((current) => Math.max(0, current - 100));
+        }, 100);
 
-        return () => window.clearTimeout(timer);
+        return () => {
+            window.clearTimeout(timer);
+            window.clearInterval(countdown);
+        };
     }, [handleClose, request.id]);
 
     return (
@@ -62,10 +68,10 @@ export function FriendRequestRealtimeAlert({
             <Alert className="overflow-hidden bg-background shadow-lg">
                 <Bell/>
                 <AlertTitle>{t("newFriendRequest")}</AlertTitle>
-                <AlertDescription>
+                <AlertDescription className="col-start-2 mt-1">
                     {request.requester.name} {t("requestLine")}
                 </AlertDescription>
-                <AlertAction className="flex items-center gap-1">
+                <div className="col-start-2 mt-3 flex flex-wrap items-center justify-end gap-2">
                     <Button type="button" size="sm" onClick={handleOpenRequests}>
                         {t("viewRequests")}
                     </Button>
@@ -73,17 +79,20 @@ export function FriendRequestRealtimeAlert({
                         <X data-icon="inline-start"/>
                         <span className="sr-only">{t("close")}</span>
                     </Button>
-                </AlertAction>
-                <div className="mt-3 flex items-center gap-2">
+                </div>
+                <div className="col-start-2 mt-2 flex items-center gap-2">
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
-                            className="alert-progress-bar h-full rounded-full bg-unread"
-                            style={{animationDuration: `${ALERT_DURATION_MS}ms`}}
+                            className="h-full rounded-full bg-unread transition-[width] duration-100"
+                            style={{width: `${(remainingMs / ALERT_DURATION_MS) * 100}%`}}
                         />
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                        {t("alertLeavingSoon")}
+                    <span className="min-w-10 text-right text-[11px] text-muted-foreground">
+                        {Math.ceil(remainingMs / 1000)}s
                     </span>
+                </div>
+                <div className="col-start-2 text-[11px] text-muted-foreground">
+                    {t("alertLeavingSoon")}
                 </div>
             </Alert>
         </div>

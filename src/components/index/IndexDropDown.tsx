@@ -24,6 +24,7 @@ import {useChat} from "@/components/index/chat-provider";
 import type {FriendSearchResult} from "@/lib/types";
 import {FieldErrorLine} from "@/components/form/field-error-line";
 import {useAppTranslations} from "@/i18n/use-app-translations";
+import {APP_BASE_URL} from "@/lib/env";
 
 function mapFriendError(message: string, t: ReturnType<typeof useAppTranslations>) {
     if (
@@ -244,7 +245,7 @@ export function IndexDropDown() {
                             <Input
                                 id="friend-link"
                                 value={friendLink}
-                                placeholder="http://localhost:2616?friend=TC1234ABCD"
+                                placeholder={`${APP_BASE_URL}?friend=TC1234ABCD`}
                                 onChange={(event) => setFriendLink(event.target.value)}
                                 aria-invalid={Boolean(errors.friendLink)}
                             />

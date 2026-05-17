@@ -13,7 +13,7 @@ import {
 import {Input} from "@/components/ui/input";
 import {FieldErrorLine} from "@/components/form/field-error-line";
 import {authApi, tokenStore} from "@/lib/api";
-import {getOrCreateEncryptionPublicKey} from "@/lib/e2ee";
+import {createEncryptionPayloadForRegister} from "@/lib/e2ee";
 import {cn} from "@/lib/utils";
 import {useAppTranslations} from "@/i18n/use-app-translations";
 
@@ -127,8 +127,14 @@ export function SignupForm({
 
         setPending(true);
         try {
-            const encryptionPublicKey = await getOrCreateEncryptionPublicKey(email);
-            const response = await authApi.register({name, email, password, code, encryptionPublicKey});
+            const encryptionPayload = await createEncryptionPayloadForRegister(email, password);
+            const response = await authApi.register({
+                name,
+                email,
+                password,
+                code,
+                ...encryptionPayload,
+            });
 
             tokenStore.set(response.token);
             window.localStorage.setItem("telecat_user", JSON.stringify(response.user));

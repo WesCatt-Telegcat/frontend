@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  EncryptionKeyPayload,
   EncryptedMessage,
   FriendConversation,
   FriendRequest,
@@ -10,9 +11,7 @@ import type {
   SendEncryptedMessageInput,
   User,
 } from "@/lib/types"
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:2617"
+import { API_BASE_URL } from "@/lib/env"
 
 type ApiEnvelope<T> = {
   code: number
@@ -89,14 +88,17 @@ export const authApi = {
     name: string
     password: string
     code: string
-    encryptionPublicKey: string
-  }) {
+  } & EncryptionKeyPayload) {
     return apiFetch<AuthResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify(input),
     })
   },
-  login(input: { email: string; password: string; encryptionPublicKey: string }) {
+  login(
+    input:
+      | { email: string; password: string }
+      | ({ email: string; password: string } & Partial<EncryptionKeyPayload>)
+  ) {
     return apiFetch<AuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify(input),
@@ -105,10 +107,10 @@ export const authApi = {
   me() {
     return apiFetch<User>("/auth/me")
   },
-  syncEncryptionKey(encryptionPublicKey: string) {
+  syncEncryptionKey(input: EncryptionKeyPayload) {
     return apiFetch<User>("/auth/me/encryption-key", {
       method: "POST",
-      body: JSON.stringify({ encryptionPublicKey }),
+      body: JSON.stringify(input),
     })
   },
 }
@@ -178,9 +180,16 @@ export const messagesApi = {
       body: JSON.stringify(input),
     })
   },
-  markRead(friendId: string) {
-    return apiFetch<{ success: boolean }>(`/messages/${friendId}/read`, {
+  markRead(
+    friendId: string,
+    input?: {
+      cursor?: string
+      messageIds?: string[]
+    }
+  ) {
+    return apiFetch<{ success: boolean; count: number }>(`/messages/${friendId}/read`, {
       method: "POST",
+      body: JSON.stringify(input ?? {}),
     })
   },
 }

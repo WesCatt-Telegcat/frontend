@@ -29,11 +29,16 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
     const {user} = useSession();
     const {friends, pendingNewerCount, requests, selectedFriendId} = useChat();
     const t = useAppTranslations();
+    const safePendingNewerCount = Number.isFinite(pendingNewerCount) ? Math.max(0, pendingNewerCount) : 0;
     const hasUnreadMessages = friends.some(
-        (friend) =>
-            friend.unread +
-                (friend.id === selectedFriendId ? pendingNewerCount : 0) >
-            0
+        (friend) => {
+            const safeUnread = Number.isFinite(friend.unread) ? Math.max(0, friend.unread) : 0;
+            const displayUnread = friend.id === selectedFriendId
+                ? Math.max(safeUnread, safePendingNewerCount)
+                : safeUnread;
+
+            return displayUnread > 0;
+        }
     );
     const hasPendingRequests = requests.length > 0;
     const navMain = [
@@ -95,6 +100,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                     <SidebarGroup>
                         <SidebarGroupContent className="px-1.5 md:px-0">
                             <SidebarMenu>
+
                                 {navMain.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton

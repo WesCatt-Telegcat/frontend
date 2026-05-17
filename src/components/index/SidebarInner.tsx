@@ -18,6 +18,7 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useAppTranslations();
+    const safePendingNewerCount = Number.isFinite(pendingNewerCount) ? Math.max(0, pendingNewerCount) : 0;
     const [query, setQuery] = useState("");
     const filteredFriends = useMemo(() => {
         const keyword = query.trim().toLowerCase();
@@ -54,6 +55,13 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
                 <SidebarGroup className="px-0">
                     <SidebarGroupContent>
                         {filteredFriends.map((friend) => (
+                            (() => {
+                                const safeUnread = Number.isFinite(friend.unread) ? Math.max(0, friend.unread) : 0;
+                                const displayUnread = friend.id === selectedFriendId
+                                    ? Math.max(safeUnread, safePendingNewerCount)
+                                    : safeUnread;
+
+                                return (
                             <button
                                 type="button"
                                 key={friend.id}
@@ -87,7 +95,7 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
                                     }
                                 }}
                                 className={cn(
-                                    "flex w-full flex-col items-start gap-2 border-b px-2 py-2 text-left text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                    "relative flex w-full flex-col items-start gap-2 border-b px-2 py-2 text-left text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                                     selectedFriendId === friend.id && "bg-muted"
                                 )}
                             >
@@ -113,18 +121,32 @@ export function SidebarInner({onSelectFriend}: { onSelectFriend?: () => void }) 
                                         {dayjs(friend.lastMessageAt).format("HH:mm")}
                                     </span>
                                 </div>
-                                <div className="flex w-full items-center gap-2">
-                                    <span className="line-clamp-2 min-w-0 flex-1 text-xs whitespace-break-spaces text-muted-foreground">
-                                        {friend.lastMessage}
-                                    </span>
-                                    <Point
-                                        number={
-                                            friend.unread +
-                                            (friend.id === selectedFriendId ? pendingNewerCount : 0)
-                                        }
-                                    />
+                                <div
+                                    className="grid w-full min-w-0 items-center gap-2"
+                                    style={{gridTemplateColumns: "minmax(0, 60%) auto"}}
+                                >
+                                    <div className="min-w-0 text-xs text-muted-foreground">
+                                        <p
+                                            className="m-0 block"
+                                            style={{
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {friend.lastMessage}
+                                        </p>
+                                    </div>
+
+                                    <div className="justify-self-end">
+                                        <Point
+                                            number={displayUnread}
+                                        />
+                                    </div>
                                 </div>
                             </button>
+                                )
+                            })()
                         ))}
                         {!filteredFriends.length ? (
                             <div className="p-4 text-sm text-muted-foreground">

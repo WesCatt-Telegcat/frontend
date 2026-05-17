@@ -8,9 +8,8 @@ import {
   useMemo,
   useState,
 } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { authApi, tokenStore } from "@/lib/api"
-import { getOrCreateEncryptionPublicKey } from "@/lib/e2ee"
 import type { User } from "@/lib/types"
 import { useAppTranslations } from "@/i18n/use-app-translations"
 
@@ -25,7 +24,6 @@ const SessionContext = createContext<SessionContextValue | null>(null)
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const pathname = usePathname()
   const t = useAppTranslations()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,25 +41,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
       authApi
         .me()
-        .then(async (currentUser) => {
+        .then((currentUser) => {
           if (!mounted) {
             return
           }
 
-          const encryptionPublicKey = await getOrCreateEncryptionPublicKey(
-            currentUser.email
-          )
-          const syncedUser =
-            encryptionPublicKey !== currentUser.encryptionPublicKey
-              ? await authApi.syncEncryptionKey(encryptionPublicKey)
-              : currentUser
-
-          if (!mounted) {
-            return
-          }
-
-          setUser(syncedUser)
-          window.localStorage.setItem("telecat_user", JSON.stringify(syncedUser))
+          setUser(currentUser)
+          window.localStorage.setItem("telecat_user", JSON.stringify(currentUser))
         })
         .catch(() => {
           tokenStore.clear()
@@ -77,7 +63,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false
     }
-  }, [router, pathname])
+  }, [router])
 
   const setSession = useCallback((token: string, nextUser: User) => {
     tokenStore.set(token)

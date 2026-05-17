@@ -8,7 +8,7 @@ import {Field, FieldGroup, FieldLabel} from "@/components/ui/field";
 import {Input} from "@/components/ui/input";
 import {FieldErrorLine} from "@/components/form/field-error-line";
 import {authApi, tokenStore} from "@/lib/api";
-import {getOrCreateEncryptionPublicKey} from "@/lib/e2ee";
+import {bootstrapEncryptionAfterLogin} from "@/lib/e2ee";
 import {cn} from "@/lib/utils";
 import {useAppTranslations} from "@/i18n/use-app-translations";
 
@@ -48,13 +48,18 @@ export function LoginForm({
 
         setPending(true);
         try {
-            const encryptionPublicKey = await getOrCreateEncryptionPublicKey(email);
-            const response = await authApi.login({email, password, encryptionPublicKey});
+            const response = await authApi.login({email, password});
 
             tokenStore.set(response.token);
-            window.localStorage.setItem("telecat_user", JSON.stringify(response.user));
+            const syncPayload = await bootstrapEncryptionAfterLogin(response.user, password);
+            const sessionUser = syncPayload
+                ? await authApi.syncEncryptionKey(syncPayload)
+                : response.user;
+
+            window.localStorage.setItem("telecat_user", JSON.stringify(sessionUser));
             router.replace("/");
         } catch (err) {
+            tokenStore.clear();
             setErrors({
                 password: err instanceof Error ? err.message : t("passwordRequired"),
             });

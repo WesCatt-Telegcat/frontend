@@ -118,7 +118,7 @@ export const appMessages: Record<Locale, {common: Record<string, string>}> = {
             alertLeavingSoon: "提示即将关闭",
             sponsorTitle: "赞助 Telecat",
             sponsorDesc: "选择你习惯的支付方式来支持项目继续开发。",
-            sponsorStaticDesc: "直接使用你的支付宝或微信扫一扫支持项目，不走商户支付流程。",
+            sponsorStaticDesc: "使用你的支付宝或微信来支持项目开发。",
             sponsorStatusPending: "待配置",
             sponsorMethodAlipay: "支付宝",
             sponsorMethodWechat: "微信支付",
@@ -142,7 +142,7 @@ export const appMessages: Record<Locale, {common: Record<string, string>}> = {
             sponsorQrHint: "将收款二维码图片放到这个路径后，这里会自动显示。",
             sponsorPreview: "查看大图",
             sponsorPreviewDesc: "手机端可直接长按保存或让对方扫码。",
-            sponsorThanksStatic: "双二维码模式不会自动确认到账，只作为支持项目的静态打赏页。",
+            sponsorThanksStatic: "所有打赏皆会作为后续项目开发资金。",
         },
     },
     en: {

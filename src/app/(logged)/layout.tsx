@@ -17,6 +17,7 @@ import {TooltipProvider} from "@/components/ui/tooltip";
 import {SessionProvider} from "@/components/auth/session-provider";
 import {ChatProvider} from "@/components/index/chat-provider";
 import {LoggedShellTitle} from "@/components/app/logged-shell-title";
+import {MobileBottomNav} from "@/components/mobile-bottom-nav";
 
 export default function layout({children}: { children: ReactNode }) {
     return (
@@ -29,16 +30,19 @@ export default function layout({children}: { children: ReactNode }) {
                         } as CSSProperties
                     }
                 >
-                    <TooltipProvider>
-                        <AppSidebar/>
-                    </TooltipProvider>
+                    <div className="hidden md:flex">
+                        <TooltipProvider>
+                            <AppSidebar/>
+                        </TooltipProvider>
+                    </div>
                     <SidebarInset>
                         <header className="sticky top-0 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
-                            <SidebarTrigger className="-ml-1"/>
+                            <SidebarTrigger className="-ml-1 hidden md:inline-flex"/>
                             <Separator
                                 orientation="vertical"
-                                className="mr-2 data-[orientation=vertical]:h-4"
+                                className="mr-2 hidden data-[orientation=vertical]:h-4 md:block"
                             />
+
                             <Breadcrumb>
                                 <BreadcrumbList>
                                     <BreadcrumbItem className="hidden md:block">
@@ -49,10 +53,11 @@ export default function layout({children}: { children: ReactNode }) {
                                 </BreadcrumbList>
                             </Breadcrumb>
                         </header>
-                        <main className="flex min-h-0 flex-1 flex-col overflow-auto p-4">
+                        <main className="flex min-h-0 flex-1 flex-col overflow-auto p-4 pb-24 md:pb-4">
                             {children}
                         </main>
                     </SidebarInset>
+                    <MobileBottomNav/>
                 </SidebarProvider>
             </ChatProvider>
         </SessionProvider>

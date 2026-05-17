@@ -27,6 +27,7 @@ export function MessageList({onBack}: { onBack?: () => void }) {
         selectedFriend,
         setConversationAtBottom,
         acknowledgeCurrentConversation,
+        markMessagesAsSeen,
         loadOlderMessages,
         loadNewerMessages,
         resendMessage,
@@ -97,24 +98,10 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                         initialTopMostItemIndex={initialTopMostItemIndex}
                         alignToBottom
                         atBottomThreshold={160}
-                        followOutput={(isAtBottom) =>
-                            pendingNewerCount > 0
-                                ? false
-                                : isAtBottom
-                                    ? "smooth"
-                                    : false
-                        }
+                        followOutput={(isAtBottom) => (isAtBottom ? "smooth" : false)}
                         atBottomStateChange={(nextAtBottom) => {
                             setAtBottom(nextAtBottom);
                             setConversationAtBottom(nextAtBottom);
-
-                            if (
-                                nextAtBottom &&
-                                pendingNewerCount > 0 &&
-                                !hasNewerMessages
-                            ) {
-                                void acknowledgeCurrentConversation();
-                            }
                         }}
                         rangeChanged={(range) => {
                             const firstVisibleOffset = range.startIndex - firstMessageItemIndex;
@@ -136,6 +123,25 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                             ) {
                                 void loadNewerMessages();
                             }
+
+                            if (pendingNewerCount > 0) {
+                                const visibleStart = Math.max(0, firstVisibleOffset);
+                                const visibleEnd = Math.min(
+                                    messages.length - 1,
+                                    range.endIndex - firstMessageItemIndex
+                                );
+                                const visibleNewMessages = messages
+                                    .slice(visibleStart, visibleEnd + 1)
+                                    .filter((message) => !message.isMe && message.isNew);
+
+                                if (visibleNewMessages.length > 0) {
+                                    markMessagesAsSeen(visibleStart, visibleEnd);
+                                    void acknowledgeCurrentConversation(
+                                        visibleNewMessages.map((message) => message.id)
+                                    );
+                                }
+                            }
+
                         }}
                         itemContent={(index, message) => {
                             const relativeIndex = index - firstMessageItemIndex;
@@ -175,15 +181,13 @@ export function MessageList({onBack}: { onBack?: () => void }) {
                     </div>
                 )}
                 <div className="pointer-events-none absolute bottom-4 right-4 flex flex-col items-end gap-2">
-                    {pendingNewerCount > 0 ? (
+                    {pendingNewerCount > 0 && !atBottom ? (
                         <button
                             type="button"
                             className="pointer-events-auto flex items-center gap-2 rounded-full bg-unread px-3 py-2 text-sm text-unread-foreground shadow-sm transition hover:bg-unread/90"
                             onClick={async () => {
                                 if (hasNewerMessages) {
                                     await loadNewerMessages();
-                                } else {
-                                    await acknowledgeCurrentConversation();
                                 }
                                 scrollToBottom("smooth");
                             }}

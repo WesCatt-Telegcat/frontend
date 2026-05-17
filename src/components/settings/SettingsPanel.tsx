@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link";
 import {useState} from "react";
-import {Check, Languages, Palette, Plus, Trash2, UserRound} from "lucide-react";
+import {Check, Languages, Palette, Plus, Sparkles, Trash2, UserRound} from "lucide-react";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {Button} from "@/components/ui/button";
 import {
@@ -35,11 +36,13 @@ import {useSession} from "@/components/auth/session-provider";
 import {accentPresets, accentTextColorPresets} from "@/lib/app-preferences";
 import {cn} from "@/lib/utils";
 import {useAppTranslations} from "@/i18n/use-app-translations";
+import {useIsMobile} from "@/hooks/use-mobile";
 
 type ColorEditorTarget = "accent" | "accentText";
 
 export function SettingsPanel() {
     const {user} = useSession();
+    const isMobile = useIsMobile();
     const {
         accentColor,
         accentTextColor,
@@ -329,6 +332,23 @@ export function SettingsPanel() {
                     </div>
                 </CardContent>
             </Card>
+
+            {isMobile ? (
+                <Card>
+                    <CardHeader className="gap-1">
+                        <CardTitle>{t("sponsor")}</CardTitle>
+                        <CardDescription>{t("sponsorDesc")}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild type="button" variant="outline" className="w-full justify-start">
+                            <Link href="/sponsor">
+                                <Sparkles data-icon="inline-start"/>
+                                {t("sponsor")}
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : null}
 
             <AccountModal user={user} open={profileOpen} onOpenChange={setProfileOpen}/>
             <Dialog open={accentEditorOpen} onOpenChange={setAccentEditorOpen}>

@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
-
-First, run the development server:
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default local URL:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- App: `http://localhost:2616`
+- API: `http://localhost:2617`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use these env files as templates:
 
-## Learn More
+- [`.env.example`](./.env.example)
+- [`.env.development.example`](./.env.development.example)
+- [`.env.production.example`](./.env.production.example)
 
-To learn more about Next.js, take a look at the following resources:
+## Docker deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The frontend is configured for Next.js `standalone` output and can be deployed with Docker directly.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Server files
 
-## Deploy on Vercel
+If `chat-frontend/` itself is the deployment root on the server, keep:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `docker-compose.yml`
+- `.env.production`
+- `Dockerfile`
+- `.dockerignore`
+- `package.json`
+- `package-lock.json`
+- `next.config.ts`
+- `tsconfig.json`
+- `postcss.config.mjs`
+- `eslint.config.mjs`
+- `components.json`
+- `public/`
+- `src/`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Build image
+
+```bash
+docker build \
+  -t telecat-frontend:latest \
+  --build-arg NEXT_PUBLIC_APP_URL=https://app.example.com \
+  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
+  ./frontend
+```
+
+### Run container
+
+```bash
+docker run -d \
+  --name telecat-frontend \
+  -p 2616:2616 \
+  telecat-frontend:latest
+```
+
+### Server-side note
+
+`NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` are injected at **build time**.  
+If you deploy to another domain, rebuild the image with the new values.
+
+### Reverse proxy
+
+If you put Nginx, Caddy, or Traefik in front of the container, proxy traffic to:
+
+- `http://127.0.0.1:2616`
+
+## Docker Compose
+
+Create `.env.production`:
+
+```env
+NEXT_PUBLIC_APP_URL=https://app.example.com
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+FRONTEND_PORT=2616
+IMAGE_TAG=latest
+```
+
+Then start:
+
+```bash
+docker compose --env-file .env.production up -d --build
+```
+
+Stop:
+
+```bash
+docker compose --env-file .env.production down
+```
