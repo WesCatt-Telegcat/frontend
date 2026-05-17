@@ -419,6 +419,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   )
 
   const refresh = useCallback(async () => {
+    if (!user || !tokenStore.get()) {
+      return
+    }
+
     const [nextFriends, nextRequests] = await Promise.all([
       friendsApi.list(),
       friendsApi.incomingRequests(),
@@ -436,7 +440,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return null
     })
     setLoading(false)
-  }, [hydrateFriendPreviews])
+  }, [hydrateFriendPreviews, user])
 
   const acknowledgeCurrentConversation = useCallback(async (messageIds: string[]) => {
     const friendId = selectedFriendIdRef.current
@@ -491,8 +495,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [decreaseFriendUnread])
 
   useEffect(() => {
+    if (!user || !tokenStore.get()) {
+      setLoading(false)
+      return
+    }
+
     queueMicrotask(() => void refresh())
-  }, [refresh])
+  }, [refresh, user])
 
   useEffect(() => {
     if (!selectedFriendId) {

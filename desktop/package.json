@@ -4,10 +4,11 @@
   "private": true,
   "main": "src/main.cjs",
   "scripts": {
+    "sync:version": "node ./scripts/sync-version.mjs",
     "prepare:renderer:win": ".\\scripts\\prepare-renderer-win.cmd",
     "prepare:renderer:mac": "bash ./scripts/prepare-renderer.sh",
-    "dist:win": "npm run prepare:renderer:win && npm exec electron-builder -- --win nsis zip",
-    "dist:mac": "npm run prepare:renderer:mac && npm exec electron-builder -- --mac dmg zip"
+    "dist:win": "npm run sync:version && npm run prepare:renderer:win && npm exec electron-builder -- --win nsis zip",
+    "dist:mac": "npm run sync:version && npm run prepare:renderer:mac && npm exec electron-builder -- --mac dmg zip"
   },
   "devDependencies": {
     "electron": "^37.2.0",

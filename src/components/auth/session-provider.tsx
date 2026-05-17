@@ -92,6 +92,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+        {t("loading")}
+      </div>
+    )
+  }
+
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   )

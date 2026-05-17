@@ -34,6 +34,12 @@ jobs:
         working-directory: desktop
         run: npm ci
 
+      - name: Sync desktop version from tag
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+        working-directory: desktop
+        run: npm run sync:version
+
       - name: Build frontend standalone
         env:
           NEXT_DIST_DIR: .next-electron-desktop
