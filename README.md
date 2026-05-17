@@ -43,11 +43,7 @@ If `chat-frontend/` itself is the deployment root on the server, keep:
 ### Build image
 
 ```bash
-docker build \
-  -t telecat-frontend:latest \
-  --build-arg NEXT_PUBLIC_APP_URL=https://app.example.com \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
-  ./frontend
+docker build -t telecat-frontend:latest .
 ```
 
 ### Run container
@@ -61,8 +57,8 @@ docker run -d \
 
 ### Server-side note
 
-`NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` are injected at **build time**.  
-If you deploy to another domain, rebuild the image with the new values.
+`NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_BASE_URL` are read from `.env.production` during image build.  
+If you deploy to another domain, update `.env.production` and rebuild.
 
 ### Reverse proxy
 
@@ -77,18 +73,24 @@ Create `.env.production`:
 ```env
 NEXT_PUBLIC_APP_URL=https://app.example.com
 NEXT_PUBLIC_API_BASE_URL=https://api.example.com
-FRONTEND_PORT=2616
-IMAGE_TAG=latest
 ```
 
 Then start:
 
 ```bash
-docker compose --env-file .env.production up -d --build
+docker compose up -d --build
 ```
 
 Stop:
 
 ```bash
-docker compose --env-file .env.production down
+docker compose down
+```
+
+## Server Deploy Command
+
+Run this in the `frontend` project root on the server:
+
+```bash
+docker compose up -d --build
 ```

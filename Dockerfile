@@ -15,7 +15,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 
-RUN npm run build -- --webpack
+RUN set -a \
+  && if [ -f ./.env.production ]; then . ./.env.production; fi \
+  && export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:2616}" \
+  && export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost:2617}" \
+  && npm run build -- --webpack
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
