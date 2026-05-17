@@ -1,0 +1,60 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build frontend standalone
+        env:
+          DESKTOP_NEXT_PUBLIC_API_BASE_URL: ${{ vars.DESKTOP_NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_DIST_DIR: .next-electron-desktop
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:2616
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.DESKTOP_NEXT_PUBLIC_API_BASE_URL }}
+        run: npm run build -- --webpack
+
+      - name: Copy renderer bundle
+        env:
+          RENDERER_DIST_DIR: .next-electron-desktop
+        working-directory: desktop
+        run: node scripts/copy-renderer.mjs
+
+      - name: Build desktop artifacts
+        working-directory: desktop
+        run: >
+          npm exec electron-builder --
+          ${{ matrix.os == 'windows-latest' && '--win nsis zip' || '--mac dmg zip' }}
+
+      - name: Publish release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Telecat Desktop ${{ github.ref_name }}
+          generate_release_notes: true
+          files: desktop/release/*
