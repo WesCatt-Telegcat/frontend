@@ -56,3 +56,4 @@ next-env.d.ts
 /desktop/.bundle
 /desktop/.renderer-build
 /desktop/release
+/desktop/build/installer.nsh
