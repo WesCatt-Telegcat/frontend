@@ -1,11 +1,14 @@
-const { app, BrowserWindow, dialog, shell } = require("electron");
+const { app, BrowserWindow, dialog, shell, session } = require("electron");
 const { spawn } = require("node:child_process");
+const { readFile, rm } = require("node:fs/promises");
 const path = require("node:path");
 
 const APP_PORT = Number(process.env.DESKTOP_APP_PORT ?? 2616);
 const APP_URL = `http://127.0.0.1:${APP_PORT}`;
 const RELEASE_API_URL =
   "https://api.github.com/repos/WesCatt-Telegcat/frontend/releases/latest";
+const APP_PREFERENCES_DIR = "Telecat";
+const INSTALLER_LOCALE_FILE = "installer-locale.json";
 const isDev = !app.isPackaged;
 
 let rendererProcess = null;
@@ -20,6 +23,14 @@ function rendererScriptPath() {
 
 function rendererAppRoot() {
   return path.dirname(rendererScriptPath());
+}
+
+function installerLocaleFilePath() {
+  return path.join(
+    app.getPath("appData"),
+    APP_PREFERENCES_DIR,
+    INSTALLER_LOCALE_FILE
+  );
 }
 
 function startRendererServer() {
@@ -56,6 +67,78 @@ async function waitForServer(url, timeoutMs = 30000) {
     }
 
     await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
+function normalizeAppLocale(locale) {
+  const normalizedLocale = String(locale ?? "").trim().toLowerCase();
+
+  if (normalizedLocale.startsWith("zh")) {
+    return "zh";
+  }
+
+  if (normalizedLocale.startsWith("en")) {
+    return "en";
+  }
+
+  return null;
+}
+
+async function applyInstallerLocalePreference() {
+  if (isDev) {
+    return;
+  }
+
+  const localeFile = installerLocaleFilePath();
+
+  try {
+    const raw = await readFile(localeFile, "utf8");
+    const parsed = JSON.parse(raw);
+    const locale = normalizeAppLocale(parsed?.locale);
+
+    if (!locale) {
+      await rm(localeFile, { force: true });
+      return;
+    }
+
+    const cookies = app.isReady() ? session.defaultSession.cookies : null;
+
+    if (!cookies) {
+      return;
+    }
+
+    const [localeCookie, localeModeCookie] = await Promise.all([
+      cookies.get({ url: APP_URL, name: "telecat_locale" }),
+      cookies.get({ url: APP_URL, name: "telecat_locale_mode" }),
+    ]);
+
+    const hasExistingLocalePreference =
+      localeCookie.length > 0 || localeModeCookie.length > 0;
+
+    if (!hasExistingLocalePreference) {
+      const expirationDate = Math.floor(Date.now() / 1000) + 31536000;
+
+      await Promise.all([
+        cookies.set({
+          url: APP_URL,
+          name: "telecat_locale",
+          value: locale,
+          path: "/",
+          expirationDate,
+        }),
+        cookies.set({
+          url: APP_URL,
+          name: "telecat_locale_mode",
+          value: "manual",
+          path: "/",
+          expirationDate,
+        }),
+      ]);
+    }
+
+    await rm(localeFile, { force: true });
+  } catch {
+    // ignore installer locale bootstrap failures
   }
 }
 
@@ -141,6 +224,7 @@ async function checkForUpdates(window) {
 async function createWindow() {
   startRendererServer();
   await waitForServer(APP_URL);
+  await applyInstallerLocalePreference();
 
   const window = new BrowserWindow({
     width: 1400,
